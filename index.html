@@ -678,14 +678,37 @@ function saveState() {
   if (syncReady()) { schedulePush(); }
 }
 
-// ---------- 加密云同步 ----------
+// ---------- 加密云同步（GitHub 私有仓库） ----------
 var SYNC_KEY = "workTodoBoard.sync.v1";
-var BIN_API = "https://extendsclass.com/api/json-storage/bin";
-var syncCfg = null;    // {id, salt, keyRaw}
+var GH_API = "https://api.github.com";
+var DATA_REPO_NAME = "todo-data";
+var syncCfg = null;    // {repo, token, salt, keyRaw}
 var cryptoKey = null;  // in-memory AES key
 var pushTimer = null;
 var pushing = false;
 var pushFailed = false;
+var lastSha = null;
+
+function trimStr(s) { return String(s || "").replace(/^\s+|\s+$/g, ""); }
+
+function ghHeaders(withJson) {
+  var h = {
+    "Authorization": "Bearer " + syncCfg.token,
+    "Accept": "application/vnd.github+json",
+    "X-GitHub-Api-Version": "2022-11-28"
+  };
+  if (withJson) { h["Content-Type"] = "application/json"; }
+  return h;
+}
+
+function ghUserWith(token) {
+  return fetch(GH_API + "/user", {
+    headers: { "Authorization": "Bearer " + token, "Accept": "application/vnd.github+json" }
+  }).then(function (r) {
+    if (!r.ok) { throw new Error("token"); }
+    return r.json();
+  });
+}
 
 function cryptoOK() {
   try {
@@ -737,7 +760,7 @@ function encryptState(key) {
   var iv = crypto.getRandomValues(new Uint8Array(12));
   var data = new TextEncoder().encode(JSON.stringify(state));
   return crypto.subtle.encrypt({ name: "AES-GCM", iv: iv }, key, data).then(function (ct) {
-    return { v: 2, iv: b64FromBuf(iv.buffer), ct: b64FromBuf(ct) };
+    return { v: 2, salt: syncCfg.salt, iv: b64FromBuf(iv.buffer), ct: b64FromBuf(ct) };
   });
 }
 
@@ -756,24 +779,41 @@ function cloudPush() {
   if (!syncReady() || pushing) { return; }
   pushing = true;
   encryptState(cryptoKey).then(function (payload) {
-    return fetch(BIN_API + "/" + syncCfg.id, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
+    var doPut = function (sha) {
+      var body = { message: "sync", content: btoa(JSON.stringify(payload)) };
+      if (sha) { body.sha = sha; }
+      return fetch(GH_API + "/repos/" + syncCfg.repo + "/contents/data.json", {
+        method: "PUT",
+        headers: ghHeaders(true),
+        body: JSON.stringify(body)
+      });
+    };
+    return doPut(lastSha).then(function (r) {
+      if (r.status === 409 || r.status === 422) {
+        return fetch(GH_API + "/repos/" + syncCfg.repo + "/contents/data.json", { headers: ghHeaders(false), cache: "no-store" }).then(function (r2) {
+          if (!r2.ok) { throw new Error("sha"); }
+          return r2.json();
+        }).then(function (meta) {
+          lastSha = meta.sha;
+          return doPut(lastSha);
+        });
+      }
+      return r;
+    }).then(function (r) {
+      pushing = false;
+      if (r.ok) {
+        pushFailed = false;
+        return r.json().then(function (resp) {
+          if (resp && resp.content) { lastSha = resp.content.sha; }
+        }).catch(function () {});
+      }
+      if (r.status === 401 || r.status === 403) {
+        if (!pushFailed) { pushFailed = true; toast("GitHub 令牌无效或已过期，请在「云同步」重新连接"); }
+      } else if (!pushFailed) {
+        pushFailed = true;
+        toast("云同步上传失败(" + r.status + ")，数据仍保存在本机");
+      }
     });
-  }).then(function (r) {
-    pushing = false;
-    if (r.status === 404) {
-      syncCfg = null;
-      cryptoKey = null;
-      try { localStorage.removeItem(SYNC_KEY); } catch (e) {}
-      if (!pushFailed) { pushFailed = true; toast("云端数据已失效，请重新打开「云同步」创建"); }
-    } else if (!r.ok && !pushFailed) {
-      pushFailed = true;
-      toast("云同步上传失败(" + r.status + ")，数据仍保存在本机");
-    } else if (r.ok) {
-      pushFailed = false;
-    }
   }).catch(function () {
     pushing = false;
     if (!pushFailed) { pushFailed = true; toast("云同步上传失败，请检查网络"); }
@@ -782,10 +822,14 @@ function cloudPush() {
 
 function cloudPull() {
   if (!syncReady()) { return Promise.resolve(false); }
-  return fetch(BIN_API + "/" + syncCfg.id).then(function (r) {
+  return fetch(GH_API + "/repos/" + syncCfg.repo + "/contents/data.json", { headers: ghHeaders(false), cache: "no-store" }).then(function (r) {
+    if (r.status === 404) { return null; }
     if (!r.ok) { throw new Error("http " + r.status); }
     return r.json();
-  }).then(function (payload) {
+  }).then(function (meta) {
+    if (!meta) { return false; }
+    lastSha = meta.sha;
+    var payload = JSON.parse(atob(String(meta.content).replace(/[^A-Za-z0-9+/=]/g, "")));
     if (!payload || payload.v !== 2) { return false; }
     return decryptPayload(cryptoKey, payload).then(function (cloud) {
       if (!validState(cloud)) { return false; }
@@ -803,8 +847,6 @@ function cloudPull() {
   });
 }
 
-function syncCode() { return syncCfg ? (syncCfg.id + "." + syncCfg.salt) : ""; }
-
 function showCloudSync() {
   var body = $("syncBody");
   $("syncTitle").textContent = "云同步";
@@ -815,38 +857,38 @@ function showCloudSync() {
   }
   if (syncReady()) {
     var urlHint = (location.protocol === "https:" || location.protocol === "http:")
-      ? "手机访问方法：手机浏览器打开这个同样的网址（" + location.origin + "/），点「云同步」→ 方式二连接。"
+      ? "手机访问方法：手机浏览器打开这个同样的网址（" + location.origin + "/），点「云同步」→ 方式二，粘贴同样的令牌和密码即可。"
       : "手机访问方法：手机浏览器打开本应用的网页版地址，点「云同步」→ 方式二连接。";
-    body.innerHTML = '<p class="syncstatus">已连接加密云同步，手机和电脑共用一份数据。</p>'
+    body.innerHTML = '<p class="syncstatus">已连接加密云同步（私有仓库 ' + esc(syncCfg.repo) + '），手机和电脑共用一份数据。</p>'
       + '<p style="font-size:13px;color:#475569;line-height:1.9">' + esc(urlHint) + '<br>添加到手机桌面：安卓 Chrome 右上角菜单→「添加到主屏幕」；iPhone Safari 底部「分享」→「添加到主屏幕」。</p>'
-      + '<div class="syncbox"><div class="synclabel">同步码（在新设备连接时填写）</div><input id="syncCodeInput" readonly value="' + esc(syncCode()) + '" onclick="this.select()"></div>'
-      + '<div class="modalbtns" style="justify-content:flex-start"><button class="primary" onclick="copySyncCode()">复制同步码</button><button onclick="doManualSync()">立即同步一次</button></div>'
-      + '<p style="font-size:12px;color:#9aa4b2;line-height:1.8;margin-top:10px">同步码 + 同步密码缺一不可。密码无法找回，请妥善记录。</p>';
+      + '<div class="syncbox"><div class="synclabel">连接令牌（在新设备方式二中粘贴）</div><input id="syncTokenInput" readonly value="' + esc(syncCfg.token) + '" onclick="this.select()"></div>'
+      + '<div class="modalbtns" style="justify-content:flex-start"><button class="primary" onclick="copySyncToken()">复制令牌</button><button onclick="doManualSync()">立即同步一次</button></div>'
+      + '<p style="font-size:12px;color:#9aa4b2;line-height:1.8;margin-top:10px">新设备连接需要：令牌 + 同步密码，两者缺一不可。密码无法找回，请妥善记录。</p>';
   } else {
-    body.innerHTML = '<p class="syncstatus">尚未连接云同步。连接后数据加密存到云端，手机和电脑在任何地方都能打开同一个看板。</p>'
+    body.innerHTML = '<p class="syncstatus">尚未连接云同步。连接后数据加密存到你自己的 GitHub 私有仓库，手机和电脑在任何地方都能打开同一个看板。</p>'
       + '<div class="syncsection"><b>方式一：创建新同步（第一台设备用）</b>'
+      + '<input id="newToken" type="text" placeholder="粘贴 GitHub 细粒度令牌（github_pat_ 开头）">'
       + '<input id="newPw1" type="password" placeholder="设置同步密码（至少6位，请牢记）">'
       + '<input id="newPw2" type="password" placeholder="再输入一次密码">'
       + '<button class="primary" onclick="createSync()">创建并开始同步</button></div>'
-      + '<div class="sync-section"><b>方式二：连接已有同步（新设备用）</b>'
-      + '<input id="joinCode" type="text" placeholder="同步码">'
+      + '<div class="syncsection"><b>方式二：连接已有同步（新设备用）</b>'
+      + '<input id="joinToken" type="text" placeholder="粘贴 GitHub 细粒度令牌">'
       + '<input id="joinPw" type="password" placeholder="同步密码">'
       + '<button onclick="joinSync()">连接</button></div>'
-      + '<p style="font-size:12px;color:#9aa4b2;line-height:1.8">数据在上传前已用你的密码加密，云端只保存密文。</p>';
+      + '<p style="font-size:12px;color:#9aa4b2;line-height:1.8">数据在上传前已用你的密码加密，私有仓库里只保存密文。</p>';
   }
   $("syncOverlay").style.display = "flex";
 }
 
 function closeSync() { $("syncOverlay").style.display = "none"; }
 
-function copySyncCode() {
-  modalTextCache = syncCode();
-  var codeInput = $("syncCodeInput");
-  if (codeInput) { codeInput.select(); }
+function copySyncToken() {
+  var ti = $("syncTokenInput");
+  if (ti) { ti.select(); }
   if (navigator.clipboard && navigator.clipboard.writeText) {
-    navigator.clipboard.writeText(syncCode()).then(function () { toast("同步码已复制"); }, function () { toast("请在输入框中手动复制"); });
+    navigator.clipboard.writeText(syncCfg.token).then(function () { toast("令牌已复制"); }, function () { toast("请在输入框中手动复制"); });
   } else {
-    try { document.execCommand("copy"); toast("同步码已复制"); } catch (e) { toast("请在输入框中手动复制"); }
+    try { document.execCommand("copy"); toast("令牌已复制"); } catch (e) { toast("请在输入框中手动复制"); }
   }
 }
 
@@ -859,65 +901,79 @@ function doManualSync() {
 }
 
 function createSync() {
+  var token = trimStr($("newToken").value);
   var pw1 = $("newPw1").value;
   var pw2 = $("newPw2").value;
+  if (!token) { toast("请先粘贴 GitHub 令牌"); return; }
   if (pw1.length < 6) { toast("密码至少 6 位"); return; }
   if (pw1 !== pw2) { toast("两次输入的密码不一致"); return; }
-  var salt = b64FromBuf(crypto.getRandomValues(new Uint8Array(16)).buffer);
-  deriveKey(pw1, salt).then(function (key) {
-    return fetch(BIN_API, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: '{"v":2,"iv":"","ct":""}'
-    }).then(function (r) { return r.json(); }).then(function (resp) {
-      if (!resp || !resp.id) { throw new Error("no id"); }
-      return crypto.subtle.exportKey("raw", key).then(function (raw) {
-        syncCfg = { id: resp.id, salt: salt, keyRaw: b64FromBuf(raw) };
-        cryptoKey = key;
-        pushFailed = false;
-        saveSyncCfg(syncCfg);
-        cloudPush();
-        showCloudSync();
-        toast("云同步已创建，请记住同步密码");
-      });
-    });
-  }).catch(function () { toast("创建失败，请检查网络后重试"); });
-}
-
-function joinSync() {
-  var code = $("joinCode").value.replace(/^\s+|\s+$/g, "");
-  var pw = $("joinPw").value;
-  var dot = code.indexOf(".");
-  if (dot <= 0 || dot >= code.length - 1) { toast("同步码格式不对，请完整复制"); return; }
-  var id = code.slice(0, dot);
-  var salt = code.slice(dot + 1);
-  deriveKey(pw, salt).then(function (key) {
-    return fetch(BIN_API + "/" + id).then(function (r) {
-      if (r.status === 404) { throw new Error("notfound"); }
-      if (!r.ok) { throw new Error("http " + r.status); }
-      return r.json();
-    }).then(function (payload) {
-      if (!payload || payload.v !== 2) { throw new Error("empty"); }
-      return decryptPayload(key, payload).then(function (cloud) {
-        if (!validState(cloud)) { throw new Error("bad"); }
+  ghUserWith(token).then(function (u) {
+    var repo = u.login + "/" + DATA_REPO_NAME;
+    return fetch(GH_API + "/repos/" + repo, {
+      headers: { "Authorization": "Bearer " + token, "Accept": "application/vnd.github+json" }
+    }).then(function (r) {
+      if (!r.ok) { throw new Error("norepo"); }
+      var salt = b64FromBuf(crypto.getRandomValues(new Uint8Array(16)).buffer);
+      return deriveKey(pw1, salt).then(function (key) {
         return crypto.subtle.exportKey("raw", key).then(function (raw) {
-          syncCfg = { id: id, salt: salt, keyRaw: b64FromBuf(raw) };
+          syncCfg = { repo: repo, token: token, salt: salt, keyRaw: b64FromBuf(raw) };
           cryptoKey = key;
+          lastSha = null;
           pushFailed = false;
           saveSyncCfg(syncCfg);
-          state = normalizeState(cloud);
-          persistLocal();
-          render();
+          cloudPush();
           showCloudSync();
-          toast("已连接，云端数据已同步");
+          toast("云同步已创建，请记住同步密码");
         });
       });
     });
   }).catch(function (e) {
     var m = String(e && e.message || "");
-    if (m === "notfound") { toast("同步码不存在，请核对后重试"); }
-    else if (m === "empty") { toast("该同步暂无数据，请先在创建设备上同步一次"); }
-    else { toast("连接失败：同步码或密码错误"); }
+    if (m === "token") { toast("令牌无效，请核对后重试"); }
+    else if (m === "norepo") { toast("未找到 todo-data 私有仓库，请先让助手创建"); }
+    else { toast("创建失败，请检查网络后重试"); }
+  });
+}
+
+function joinSync() {
+  var token = trimStr($("joinToken").value);
+  var pw = $("joinPw").value;
+  if (!token) { toast("请先粘贴 GitHub 令牌"); return; }
+  ghUserWith(token).then(function (u) {
+    var repo = u.login + "/" + DATA_REPO_NAME;
+    return fetch(GH_API + "/repos/" + repo + "/contents/data.json", {
+      headers: { "Authorization": "Bearer " + token, "Accept": "application/vnd.github+json" },
+      cache: "no-store"
+    }).then(function (r) {
+      if (r.status === 404) { throw new Error("empty"); }
+      if (!r.ok) { throw new Error("http " + r.status); }
+      return r.json();
+    }).then(function (meta) {
+      lastSha = meta.sha;
+      var env = JSON.parse(atob(String(meta.content).replace(/[^A-Za-z0-9+/=]/g, "")));
+      if (!env || env.v !== 2 || !env.salt) { throw new Error("bad"); }
+      return deriveKey(pw, env.salt).then(function (key) {
+        return decryptPayload(key, env).then(function (cloud) {
+          if (!validState(cloud)) { throw new Error("bad"); }
+          return crypto.subtle.exportKey("raw", key).then(function (raw) {
+            syncCfg = { repo: repo, token: token, salt: env.salt, keyRaw: b64FromBuf(raw) };
+            cryptoKey = key;
+            pushFailed = false;
+            saveSyncCfg(syncCfg);
+            state = normalizeState(cloud);
+            persistLocal();
+            render();
+            showCloudSync();
+            toast("已连接，云端数据已同步");
+          });
+        });
+      });
+    });
+  }).catch(function (e) {
+    var m = String(e && e.message || "");
+    if (m === "token") { toast("令牌无效，请核对后重试"); }
+    else if (m === "empty") { toast("该账号暂无同步数据，请先在第一台设备上创建"); }
+    else { toast("连接失败：令牌或密码错误"); }
   });
 }
 
