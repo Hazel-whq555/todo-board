@@ -1,0 +1,1498 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#2563eb">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="工作待办看板">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon.png">
+<title>工作待办看板</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: "Microsoft YaHei", "微软雅黑", "PingFang SC", sans-serif; background: #f2f4f8; color: #24292f; min-height: 100vh; }
+.wrap { max-width: 900px; margin: 0 auto; padding: 20px 16px 60px; }
+.card { background: #fff; border-radius: 12px; padding: 18px 20px; margin-bottom: 16px; box-shadow: 0 1px 4px rgba(20,40,80,.08); }
+h1 { font-size: 22px; }
+h2 { font-size: 16px; margin-bottom: 12px; color: #1f3a5f; }
+.topbar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+.brand p { color: #6b7280; font-size: 13px; margin-top: 4px; }
+button { border: 1px solid #d0d7de; background: #fff; color: #24292f; border-radius: 8px; padding: 6px 14px; font-size: 13px; cursor: pointer; font-family: inherit; }
+button:hover { background: #f0f4ff; border-color: #9db6e8; }
+button.primary { background: #2563eb; border-color: #2563eb; color: #fff; }
+button.primary:hover { background: #1d4fd8; }
+button.danger { color: #c0392b; }
+button.danger:hover { background: #fdecea; border-color: #e6a49b; }
+.nav { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+.navbtns { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.navbtns input[type=date] { padding: 5px 8px; border: 1px solid #d0d7de; border-radius: 8px; font-family: inherit; }
+.datelabel { font-size: 18px; font-weight: bold; color: #1f3a5f; }
+.chips { margin-top: 6px; }
+.chip { display: inline-block; background: #eef2f7; color: #475569; border-radius: 20px; padding: 2px 12px; font-size: 12px; margin-right: 6px; }
+.chip.green { background: #e5f5ec; color: #1e7d46; }
+.chip.red { background: #fdecea; color: #c0392b; }
+.chip.amber { background: #fdf3e0; color: #a06a00; }
+.chip.gray { background: #f0f0f2; color: #777; }
+.banner { background: #fff8e6; border: 1px solid #f0dfa8; color: #7a5c00; border-radius: 10px; padding: 10px 16px; margin-bottom: 14px; font-size: 13px; display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+form input[type=text], form input:not([type]) { width: 100%; padding: 9px 12px; border: 1px solid #d0d7de; border-radius: 8px; font-size: 14px; font-family: inherit; margin-bottom: 10px; }
+form input:focus, .navbtns input:focus { outline: 2px solid #bfdbfe; border-color: #2563eb; }
+.formrow { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
+.formrow label { font-size: 13px; color: #475569; display: flex; align-items: center; gap: 8px; }
+.formrow input[type=date] { padding: 6px 8px; border: 1px solid #d0d7de; border-radius: 8px; font-family: inherit; }
+.slider input[type=range] { width: 160px; }
+.formfoot { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.hint { font-size: 12px; color: #a06a00; }
+.empty { color: #9aa4b2; font-size: 13px; padding: 8px 0; }
+.item { display: flex; gap: 12px; padding: 14px 6px; border-bottom: 1px solid #eef1f5; transition: opacity .35s, transform .35s; }
+.item:last-child { border-bottom: none; }
+.item.completing { opacity: 0; transform: translateX(30px); }
+.check { flex: none; width: 26px; height: 26px; border-radius: 50%; border: 2px solid #b6c2d2; background: #fff; cursor: pointer; margin-top: 2px; position: relative; }
+.check:hover { border-color: #2563eb; background: #eff4ff; }
+.itembody { flex: 1; min-width: 0; }
+.itemtitle { font-size: 15px; font-weight: bold; line-height: 1.5; word-break: break-all; }
+.itemtitle .chip { margin-left: 8px; font-weight: normal; vertical-align: 1px; }
+.pbar { height: 6px; background: #edf0f4; border-radius: 4px; margin: 8px 0 4px; overflow: hidden; }
+.pbar i { display: block; height: 100%; background: linear-gradient(90deg,#60a5fa,#2563eb); border-radius: 4px; }
+.pmeta { font-size: 12px; color: #6b7280; }
+.detail { margin-top: 8px; font-size: 13px; color: #374151; background: #f8fafc; border-radius: 8px; padding: 8px 12px; }
+.detail p { margin: 3px 0; word-break: break-all; }
+.detail b { color: #1f3a5f; font-weight: normal; }
+.acts { margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap; }
+.acts button { font-size: 12px; padding: 4px 10px; }
+.doneitem { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 8px 4px; border-bottom: 1px solid #eef1f5; font-size: 14px; }
+.doneitem:last-child { border-bottom: none; }
+.doneitem .t { text-decoration: line-through; color: #8a94a3; flex: 1; word-break: break-all; }
+.doneitem .time { color: #9aa4b2; font-size: 12px; margin-left: 8px; flex: none; }
+.collapsible { cursor: pointer; user-select: none; }
+.caret { font-size: 11px; color: #9aa4b2; margin-left: 6px; }
+.fgroup { margin-bottom: 12px; }
+.fdate { font-size: 13px; font-weight: bold; color: #1f3a5f; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; }
+.fdate button { font-size: 12px; padding: 2px 10px; }
+.fgroup ul { list-style: none; padding-left: 4px; }
+.fgroup li { font-size: 14px; padding: 5px 0; color: #374151; border-bottom: 1px dashed #eef1f5; }
+.fgroup li:last-child { border-bottom: none; }
+.foot { text-align: center; color: #9aa4b2; font-size: 12px; margin-top: 8px; line-height: 1.8; }
+.overlay { position: fixed; inset: 0; background: rgba(15,23,42,.5); display: flex; align-items: center; justify-content: center; z-index: 50; padding: 20px; }
+.modal { background: #fff; border-radius: 12px; width: 100%; max-width: 720px; max-height: 86vh; display: flex; flex-direction: column; padding: 20px 24px; }
+.modal h3 { margin-bottom: 12px; color: #1f3a5f; }
+.modal pre { flex: 1; overflow: auto; background: #f8fafc; border: 1px solid #e5e9f0; border-radius: 8px; padding: 14px 16px; font-size: 13px; line-height: 1.9; white-space: pre-wrap; word-break: break-all; font-family: "Microsoft YaHei", sans-serif; }
+.modalbtns { margin-top: 14px; display: flex; gap: 10px; justify-content: flex-end; }
+.editormodal { max-width: 860px; }
+.editorhint { font-size: 12px; color: #9aa4b2; margin-bottom: 12px; line-height: 1.6; }
+.editorbody { flex: 1; overflow: auto; max-height: 62vh; padding-right: 4px; }
+.edsec { margin-bottom: 18px; }
+.edsec h4 { color: #1f3a5f; margin-bottom: 8px; font-size: 15px; }
+.edpoint { border: 1px solid #e5e9f0; border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; background: #fbfcfe; }
+.edprow { display: flex; align-items: center; gap: 8px; }
+.ednum { color: #2563eb; font-weight: bold; flex: none; font-size: 14px; min-width: 34px; }
+.edtitle { flex: 1; min-width: 0; border: 1px solid #d0d7de; border-radius: 6px; padding: 6px 10px; font-weight: bold; font-family: inherit; font-size: 14px; }
+.edprow button, .edkid button { flex: none; font-size: 12px; padding: 4px 10px; }
+.edkids { margin-top: 8px; padding-left: 34px; }
+.edkid { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.edknum { color: #6b7280; flex: none; width: 22px; text-align: right; font-size: 13px; }
+.edkid input { flex: 1; min-width: 0; border: 1px solid #d0d7de; border-radius: 6px; padding: 5px 10px; font-family: inherit; font-size: 13px; }
+.addbig { width: 100%; border-style: dashed; color: #6b7280; margin-top: 4px; }
+.edtitle:focus, .edkid input:focus { outline: 2px solid #bfdbfe; border-color: #2563eb; }
+.todaycard { border-left: 6px solid #2563eb; }
+.syncbody { overflow: auto; max-height: 62vh; }
+.syncbody input { width: 100%; padding: 9px 12px; border: 1px solid #d0d7de; border-radius: 8px; margin: 6px 0; font-size: 15px; font-family: inherit; }
+.syncbody input:focus { outline: 2px solid #bfdbfe; border-color: #2563eb; }
+.syncbody button { margin-top: 6px; }
+.syncsection { border-top: 1px dashed #e5e9f0; margin-top: 12px; padding-top: 10px; }
+.syncsection b { display: block; font-size: 14px; color: #1f3a5f; margin-bottom: 4px; }
+.syncbox { background: #f8fafc; border: 1px solid #e5e9f0; border-radius: 8px; padding: 10px 12px; margin: 10px 0; }
+.syncbox input { width: 100%; border: 1px solid #d0d7de; border-radius: 6px; padding: 8px; font-family: Consolas, "Microsoft YaHei", monospace; font-size: 13px; margin: 0; }
+.synclabel { font-size: 12px; color: #6b7280; margin-bottom: 6px; }
+.syncstatus { font-size: 14px; color: #1e7d46; margin-bottom: 10px; font-weight: bold; }
+.todayhead { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 8px; }
+.todayhead h2 { margin-bottom: 0; font-size: 18px; }
+.todaybadge { background: #2563eb; color: #fff; border-radius: 20px; padding: 2px 12px; font-size: 13px; margin-left: 8px; font-weight: normal; }
+.todaybadge.done { background: #1e7d46; }
+.trow { display: flex; align-items: center; gap: 10px; padding: 10px 4px; border-bottom: 1px solid #eef1f5; }
+.trow:last-child { border-bottom: none; }
+.tnum { color: #9aa4b2; width: 20px; flex: none; text-align: right; font-size: 13px; }
+.ttitle { flex: 1; font-size: 16px; font-weight: bold; cursor: pointer; word-break: break-all; line-height: 1.5; }
+.ttitle:hover { color: #2563eb; }
+.ttitle .chip { margin-left: 6px; font-weight: normal; }
+.tprog { flex: none; width: 120px; }
+.tprog .pbar { margin: 0 0 3px; }
+.tprog .pmeta { font-size: 11px; }
+.overduehead { margin-top: 10px; font-size: 13px; color: #a06a00; cursor: pointer; user-select: none; }
+.overdueitem { display: flex; align-items: center; gap: 10px; padding: 6px 4px; font-size: 13px; color: #475569; }
+.overdueitem .t { flex: 1; word-break: break-all; }
+.overdueitem button { flex: none; font-size: 12px; padding: 3px 10px; }
+#toast { position: fixed; left: 50%; bottom: 34px; transform: translateX(-50%); background: #1f2937; color: #fff; padding: 10px 22px; border-radius: 24px; font-size: 13px; opacity: 0; pointer-events: none; transition: opacity .25s; z-index: 99; }
+#toast.show { opacity: .95; }
+.editbox input { width: 100%; padding: 8px 10px; border: 1px solid #d0d7de; border-radius: 8px; font-size: 14px; font-family: inherit; margin-bottom: 8px; }
+@media (max-width: 640px) {
+  .wrap { padding: 12px 10px 50px; }
+  .card { padding: 14px; border-radius: 10px; }
+  .topbar { flex-direction: column; align-items: stretch; }
+  .topbar .navbtns { justify-content: flex-start; }
+  button { padding: 9px 12px; font-size: 13px; }
+  form input[type=text], form input:not([type]), .editbox input, .edtitle, .edkid input { font-size: 16px; }
+  .formrow { flex-direction: column; align-items: stretch; }
+  .formrow label { width: 100%; justify-content: space-between; }
+  .slider input[type=range] { flex: 1; }
+  .tprog { width: 64px; }
+  .ttitle { font-size: 15px; }
+  .edprow { flex-wrap: wrap; }
+  .edkids { padding-left: 8px; }
+  .modal { padding: 16px; }
+  .modalbtns { flex-wrap: wrap; }
+  .modalbtns button { flex: 1; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="card topbar">
+    <div class="brand">
+      <h1>工作待办看板</h1>
+      <p id="todayLine"></p>
+    </div>
+    <div class="navbtns">
+      <button onclick="genWeekly()">生成周报</button>
+      <button onclick="genMonthly()">生成月报</button>
+      <button onclick="backup()">备份数据</button>
+      <button onclick="document.getElementById('restoreInput').click()">恢复备份</button>
+      <button id="cloudSyncBtn" class="primary" onclick="showCloudSync()">云同步</button>
+      <input type="file" id="restoreInput" accept=".json,application/json" style="display:none" onchange="restoreFile(this)">
+    </div>
+  </header>
+
+  <div id="reminder"></div>
+
+  <section class="card todaycard">
+    <div class="todayhead">
+      <h2>今日待办 <span class="todaybadge" id="todayBadge"></span></h2>
+      <div class="navbtns">
+        <button class="primary" onclick="genTomorrow()">一键生成明天待办</button>
+        <button onclick="goToday()">查看当天看板</button>
+      </div>
+    </div>
+    <div id="todayList"></div>
+    <div id="overdueArea"></div>
+  </section>
+
+  <section class="card nav">
+    <div class="navbtns">
+      <button onclick="shiftDay(-1)">← 前一天</button>
+      <button onclick="goToday()">回到今天</button>
+      <button onclick="shiftDay(1)">后一天 →</button>
+      <input type="date" id="jumpDate" onchange="jumpTo(this.value)">
+    </div>
+    <div>
+      <div class="datelabel" id="dateLabel"></div>
+      <div class="chips" id="statChips"></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>添加待办事项</h2>
+    <form onsubmit="return addFromForm(event)">
+      <input id="fTitle" maxlength="100" placeholder="事项内容（必填），例如：跟进客户合同、整理项目申报材料">
+      <div class="formrow">
+        <label>日期 <input type="date" id="fDate" onchange="updateFutureHint()"></label>
+        <label class="slider">进度
+          <input type="range" id="fPercent" min="0" max="100" step="5" value="0" oninput="document.getElementById('fPercentOut').textContent=this.value+'%'">
+          <span id="fPercentOut">0%</span>
+        </label>
+      </div>
+      <input id="fProgress" maxlength="200" placeholder="工作进度说明（可选），例如：已完成初稿，待领导审核">
+      <input id="fNote" maxlength="200" placeholder="注意事项（可选），例如：周五前必须提交，需附检测报告">
+      <div class="formfoot">
+        <span class="hint" id="futureHint"></span>
+        <button type="submit" class="primary">添加</button>
+      </div>
+    </form>
+  </section>
+
+  <section class="card">
+    <h2 id="pendingHead"></h2>
+    <div id="pendingList"></div>
+  </section>
+
+  <section class="card">
+    <h2 class="collapsible" id="doneHead" onclick="toggleDone()"></h2>
+    <div id="doneList" style="display:none"></div>
+  </section>
+
+  <section class="card">
+    <h2>未来计划</h2>
+    <div id="futureList"></div>
+  </section>
+
+  <p class="foot">数据保存在本机浏览器中（localStorage），请固定使用同一个浏览器打开本页面，并定期点「备份数据」导出存档。<br>双击桌面上的本文件即可使用。</p>
+</div>
+
+<div id="overlay" class="overlay" style="display:none" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <h3 id="modalTitle"></h3>
+    <pre id="modalText"></pre>
+    <div class="modalbtns">
+      <button class="primary" onclick="copyModal()">复制全文</button>
+      <button onclick="downloadModal()">下载 Markdown</button>
+      <button onclick="closeModal()">关闭</button>
+    </div>
+  </div>
+</div>
+<div id="editorOverlay" class="overlay" style="display:none;z-index:55" onclick="if(event.target===this)closeEditor()">
+  <div class="modal editormodal">
+    <h3 id="editorTitle"></h3>
+    <p class="editorhint">报告分三段：先按本期任务自动带出草稿，可自由改写。每段内容可拆成若干「大点」，大点下可再添加「小点」；编辑完成后点「预览并复制」即可使用。</p>
+    <div id="editorBody" class="editorbody"></div>
+    <div class="modalbtns">
+      <button class="primary" onclick="saveEditor()">保存</button>
+      <button onclick="previewEditor()">预览并复制</button>
+      <button onclick="regenDraft()">重新生成草稿</button>
+      <button onclick="closeEditor()">关闭</button>
+    </div>
+  </div>
+</div>
+<div id="syncOverlay" class="overlay" style="display:none;z-index:56" onclick="if(event.target===this)closeSync()">
+  <div class="modal" style="max-width:560px">
+    <h3 id="syncTitle"></h3>
+    <div id="syncBody" class="syncbody"></div>
+    <div class="modalbtns"><button onclick="closeSync()">关闭</button></div>
+  </div>
+</div>
+<div id="toast"></div>
+
+<script>
+// ============================================================
+// Work Todo Board - core logic (pure functions, no DOM)
+// NOTE: keep this file pure ASCII. Chinese strings are written
+// as \uXXXX escapes so cscript (GBK reader) can run it safely.
+// ============================================================
+
+var STORE_KEY = "workTodoBoard.v1";
+
+// ---------- date helpers (all dates are YYYY-MM-DD strings) ----------
+function pad2(n) { return (n < 10 ? "0" : "") + n; }
+
+function fmtDate(d) {
+  return d.getFullYear() + "-" + pad2(d.getMonth() + 1) + "-" + pad2(d.getDate());
+}
+
+function parseDate(s) {
+  var p = String(s).split("-");
+  return new Date(parseInt(p[0], 10), parseInt(p[1], 10) - 1, parseInt(p[2], 10));
+}
+
+function addDays(s, n) {
+  var d = parseDate(s);
+  d.setDate(d.getDate() + n);
+  return fmtDate(d);
+}
+
+function todayStr() { return fmtDate(new Date()); }
+
+// Monday is the first day of the week. getDay(): 0 = Sunday.
+function mondayOf(s) {
+  var d = parseDate(s);
+  var wd = d.getDay();
+  var diff = (wd === 0) ? -6 : (1 - wd);
+  d.setDate(d.getDate() + diff);
+  return fmtDate(d);
+}
+
+function weekRange(s) {
+  var start = mondayOf(s);
+  return [start, addDays(start, 6)];
+}
+
+function monthRange(s) {
+  var d = parseDate(s);
+  var start = d.getFullYear() + "-" + pad2(d.getMonth() + 1) + "-01";
+  var last = new Date(d.getFullYear(), d.getMonth() + 1, 0);
+  return [start, fmtDate(last)];
+}
+
+function nextMonthRange(s) {
+  var d = parseDate(s);
+  var firstNext = new Date(d.getFullYear(), d.getMonth() + 1, 1);
+  return monthRange(fmtDate(firstNext));
+}
+
+// ---------- state ----------
+function newState() {
+  return { version: 1, items: [], meta: {}, reports: {} };
+}
+
+function findItem(state, id) {
+  for (var i = 0; i < state.items.length; i++) {
+    if (state.items[i].id === id) { return state.items[i]; }
+  }
+  return null;
+}
+
+function newItem(opts, now) {
+  var ts = now || new Date().getTime();
+  return {
+    id: "t" + ts + "r" + Math.floor(Math.random() * 100000),
+    date: opts.date,
+    title: String(opts.title || ""),
+    percent: (typeof opts.percent === "number") ? opts.percent : 0,
+    progress: String(opts.progress || ""),
+    note: String(opts.note || ""),
+    status: "todo",
+    createdAt: ts,
+    updatedAt: ts,
+    doneAt: null,
+    rollCount: 0
+  };
+}
+
+function addItem(state, opts, now) {
+  var it = newItem(opts, now);
+  state.items.push(it);
+  return it;
+}
+
+function completeItem(state, id, when) {
+  var it = findItem(state, id);
+  if (!it) { return null; }
+  it.status = "done";
+  it.doneAt = when || new Date().getTime();
+  it.percent = 100;
+  it.updatedAt = it.doneAt;
+  return it;
+}
+
+function undoItem(state, id) {
+  var it = findItem(state, id);
+  if (!it) { return null; }
+  it.status = "todo";
+  it.doneAt = null;
+  it.updatedAt = new Date().getTime();
+  return it;
+}
+
+// Move a task to the next working day.
+// Future-dated items shift from their own date; today/overdue items
+// shift from today so they always land in the future.
+function rollTomorrow(state, id, today) {
+  var it = findItem(state, id);
+  if (!it) { return null; }
+  var base = (it.date > today) ? it.date : today;
+  it.date = addDays(base, 1);
+  it.status = "todo";
+  it.doneAt = null;
+  it.rollCount = (it.rollCount || 0) + 1;
+  it.updatedAt = new Date().getTime();
+  return it;
+}
+
+// One-click tomorrow plan: move every unfinished item dated today or
+// earlier (today's open work + overdue leftovers) to tomorrow.
+// Done items and future-dated items are left untouched.
+function carryUnfinishedToTomorrow(state, today) {
+  var tomorrow = addDays(today, 1);
+  var moved = [];
+  for (var i = 0; i < state.items.length; i++) {
+    var it = state.items[i];
+    if (it.status === "todo" && it.date <= today) {
+      it.date = tomorrow;
+      it.rollCount = (it.rollCount || 0) + 1;
+      it.updatedAt = new Date().getTime();
+      moved.push(it);
+    }
+  }
+  return moved;
+}
+
+function updateItem(state, id, patch) {
+  var it = findItem(state, id);
+  if (!it) { return null; }
+  if (typeof patch.title === "string") { it.title = patch.title; }
+  if (typeof patch.date === "string" && patch.date !== "") { it.date = patch.date; }
+  if (typeof patch.percent === "number") { it.percent = patch.percent; }
+  if (typeof patch.progress === "string") { it.progress = patch.progress; }
+  if (typeof patch.note === "string") { it.note = patch.note; }
+  it.updatedAt = new Date().getTime();
+  return it;
+}
+
+function deleteItem(state, id) {
+  for (var i = 0; i < state.items.length; i++) {
+    if (state.items[i].id === id) { state.items.splice(i, 1); return true; }
+  }
+  return false;
+}
+
+// ---------- queries ----------
+function cmpDate(a, b) { return a < b ? -1 : (a > b ? 1 : 0); }
+
+// Items completed (by doneAt date) inside [start, end], oldest first.
+function doneInRange(state, start, end) {
+  var out = [];
+  for (var i = 0; i < state.items.length; i++) {
+    var it = state.items[i];
+    if (it.status === "done" && it.doneAt) {
+      var ds = fmtDate(new Date(it.doneAt));
+      if (ds >= start && ds <= end) { out.push(it); }
+    }
+  }
+  out.sort(function (a, b) { return a.doneAt - b.doneAt; });
+  return out;
+}
+
+// Open (todo) items scheduled on or before upTo, e.g. overdue + current.
+function openScheduled(state, upTo) {
+  var out = [];
+  for (var i = 0; i < state.items.length; i++) {
+    var it = state.items[i];
+    if (it.status === "todo" && it.date <= upTo) { out.push(it); }
+  }
+  out.sort(function (a, b) { return cmpDate(a.date, b.date) || (a.createdAt - b.createdAt); });
+  return out;
+}
+
+// Open items scheduled inside [start, end] (used for plans).
+function scheduledInRange(state, start, end) {
+  var out = [];
+  for (var i = 0; i < state.items.length; i++) {
+    var it = state.items[i];
+    if (it.status === "todo" && it.date >= start && it.date <= end) { out.push(it); }
+  }
+  out.sort(function (a, b) { return cmpDate(a.date, b.date) || (a.createdAt - b.createdAt); });
+  return out;
+}
+
+// ---------- report labels (unicode escapes keep this file ASCII) ----------
+var L = {
+  weeklyTitle: "\u5de5\u4f5c\u5468\u62a5",
+  monthlyTitle: "\u5de5\u4f5c\u6708\u62a5",
+  to: "\u81f3",
+  year: "\u5e74",
+  month: "\u6708",
+  none: "\uff08\u65e0\uff09",
+  doneAt: "\uff08\u5b8c\u6210\u4e8e ",
+  planAt: "\uff08\u8ba1\u5212 ",
+  close: "\uff09",
+  percentTag: "\u8fdb\u5ea6\uff1a",
+  progressTag: "\u8fdb\u5ea6\u8bf4\u660e\uff1a",
+  noteTag: "\u6ce8\u610f\u4e8b\u9879\uff1a",
+  secWeekDone: "\u672c\u5468\u5b8c\u6210\u5de5\u4f5c",
+  secWeekSummary: "\u672c\u5468\u5de5\u4f5c\u603b\u7ed3",
+  secWeekPlan: "\u4e0b\u5468\u5de5\u4f5c\u8ba1\u5212",
+  secMonthDone: "\u672c\u6708\u5b8c\u6210\u5de5\u4f5c",
+  secMonthSummary: "\u672c\u6708\u5de5\u4f5c\u603b\u7ed3",
+  secMonthPlan: "\u4e0b\u6708\u5de5\u4f5c\u8ba1\u5212",
+  openDraft: "\u8fdb\u884c\u4e2d\u4e8b\u9879\u53ca\u8fdb\u5ea6",
+  reflectDraft: "\u4e3b\u8981\u95ee\u9898\u4e0e\u7ecf\u9a8c\u603b\u7ed3"
+};
+
+var SEC_NUMS = ["\u4e00", "\u4e8c", "\u4e09", "\u56db", "\u4e94"];
+
+// ---------- outline model ----------
+// outline = { titleLine, sections: [ { title, points: [ { title, children: [] } ] } ] }
+
+function pointForDone(it) {
+  var p = { title: it.title + L.doneAt + fmtDate(new Date(it.doneAt)).slice(5) + L.close, children: [] };
+  if (it.progress) { p.children.push(L.progressTag + it.progress); }
+  if (it.note) { p.children.push(L.noteTag + it.note); }
+  return p;
+}
+
+function pointForPlan(it) {
+  var p = { title: it.title + L.planAt + it.date.slice(5) + L.close, children: [] };
+  if (it.note) { p.children.push(L.noteTag + it.note); }
+  return p;
+}
+
+// Summary draft: one big point listing in-progress items with percent,
+// plus one empty big point as a writing prompt.
+function summaryPoints(openItems) {
+  var pts = [];
+  if (openItems.length > 0) {
+    var kids = [];
+    for (var i = 0; i < openItems.length; i++) {
+      var it = openItems[i];
+      var kid = it.title + "\uff08" + L.percentTag + it.percent + "%\uff09";
+      var extra = [];
+      if (it.progress) { extra.push(it.progress); }
+      if (it.note) { extra.push(L.noteTag + it.note); }
+      if (extra.length > 0) { kid += " " + extra.join("\uff1b"); }
+      kids.push(kid);
+    }
+    pts.push({ title: L.openDraft, children: kids });
+  }
+  pts.push({ title: L.reflectDraft, children: [] });
+  return pts;
+}
+
+function draftWeeklyOutline(state, anyDay) {
+  var wr = weekRange(anyDay);
+  var done = doneInRange(state, wr[0], wr[1]);
+  var open = openScheduled(state, wr[1]);
+  var plan = scheduledInRange(state, addDays(wr[1], 1), addDays(wr[1], 7));
+  var s1 = [];
+  for (var i = 0; i < done.length; i++) { s1.push(pointForDone(done[i])); }
+  var s3 = [];
+  for (var k = 0; k < plan.length; k++) { s3.push(pointForPlan(plan[k])); }
+  return {
+    titleLine: L.weeklyTitle + "\uff08" + wr[0] + " " + L.to + " " + wr[1] + "\uff09",
+    sections: [
+      { title: L.secWeekDone, points: s1 },
+      { title: L.secWeekSummary, points: summaryPoints(open) },
+      { title: L.secWeekPlan, points: s3 }
+    ]
+  };
+}
+
+function draftMonthlyOutline(state, anyDay) {
+  var mr = monthRange(anyDay);
+  var nm = nextMonthRange(anyDay);
+  var done = doneInRange(state, mr[0], mr[1]);
+  var open = openScheduled(state, mr[1]);
+  var plan = scheduledInRange(state, nm[0], nm[1]);
+  var s1 = [];
+  for (var i = 0; i < done.length; i++) { s1.push(pointForDone(done[i])); }
+  var s3 = [];
+  for (var k = 0; k < plan.length; k++) { s3.push(pointForPlan(plan[k])); }
+  var y = mr[0].slice(0, 4);
+  var m = String(parseInt(mr[0].slice(5, 7), 10));
+  return {
+    titleLine: L.monthlyTitle + "\uff08" + y + L.year + m + L.month + "\uff09",
+    sections: [
+      { title: L.secMonthDone, points: s1 },
+      { title: L.secMonthSummary, points: summaryPoints(open) },
+      { title: L.secMonthPlan, points: s3 }
+    ]
+  };
+}
+
+// Render outline to plain text:
+//   title line
+//   [num]、section title
+//   （1）big point
+//   1. small point
+//   2. small point
+function renderOutlineText(outline) {
+  var out = [outline.titleLine, ""];
+  for (var s = 0; s < outline.sections.length; s++) {
+    var sec = outline.sections[s];
+    var numLabel = (s < SEC_NUMS.length) ? SEC_NUMS[s] : String(s + 1);
+    out.push(numLabel + "\u3001" + sec.title);
+    var num = 0;
+    for (var i = 0; i < sec.points.length; i++) {
+      var p = sec.points[i];
+      var kids = [];
+      for (var c = 0; c < p.children.length; c++) {
+        var cv = String(p.children[c] || "").replace(/^\s+|\s+$/g, "");
+        if (cv !== "") { kids.push(cv); }
+      }
+      var title = String(p.title || "").replace(/^\s+|\s+$/g, "");
+      if (title === "" && kids.length === 0) { continue; }
+      num++;
+      out.push("\uff08" + num + "\uff09" + title);
+      for (var k = 0; k < kids.length; k++) { out.push((k + 1) + ". " + kids[k]); }
+    }
+    if (num === 0) { out.push(L.none); }
+    out.push("");
+  }
+  while (out.length > 0 && out[out.length - 1] === "") { out.pop(); }
+  return out.join("\r\n");
+}
+
+// ---------- report storage ----------
+function weeklyKey(anyDay) { return "w:" + mondayOf(anyDay); }
+
+function monthlyKey(anyDay) { return "m:" + String(anyDay).slice(0, 7); }
+
+// Return saved outline for the period, creating a draft on first use.
+function getReport(state, key, anyDay, kind) {
+  if (!state.reports) { state.reports = {}; }
+  if (!state.reports[key]) {
+    state.reports[key] = (kind === "weekly") ? draftWeeklyOutline(state, anyDay) : draftMonthlyOutline(state, anyDay);
+  }
+  return state.reports[key];
+}
+
+</script>
+<script>
+// ===== UI 层（仅浏览器运行） =====
+var WEEK_CN = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
+var state = newState();
+var viewDate = todayStr();
+var doneOpen = false;
+var editingId = null;
+var modalTextCache = "";
+var modalFileCache = "report.md";
+var toastTimer = null;
+
+function $(id) { return document.getElementById(id); }
+
+function esc(s) {
+  return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+function toast(msg) {
+  var t = $("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  if (toastTimer) { clearTimeout(toastTimer); }
+  toastTimer = setTimeout(function () { t.classList.remove("show"); }, 2200);
+}
+
+function weekCN(dateStr) { return WEEK_CN[parseDate(dateStr).getDay()]; }
+
+function dateLabelCN(dateStr) {
+  var d = parseDate(dateStr);
+  return d.getFullYear() + "年" + (d.getMonth() + 1) + "月" + d.getDate() + "日 " + weekCN(dateStr);
+}
+
+function validState(s) {
+  return s && s.version === 1 && Object.prototype.toString.call(s.items) === "[object Array]";
+}
+
+function normalizeState(s) {
+  if (!s.meta) { s.meta = {}; }
+  if (!s.reports) { s.reports = {}; }
+  return s;
+}
+
+function loadLocalState() {
+  try {
+    var raw = localStorage.getItem(STORE_KEY);
+    if (raw) {
+      var s = JSON.parse(raw);
+      if (validState(s)) { return normalizeState(s); }
+    }
+  } catch (e) {}
+  return null;
+}
+
+function persistLocal() {
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch (e) {}
+}
+
+function saveState() {
+  if (!state.meta) { state.meta = {}; }
+  state.meta.updatedTs = Date.now();
+  persistLocal();
+  if (syncReady()) { schedulePush(); }
+}
+
+// ---------- 加密云同步 ----------
+var SYNC_KEY = "workTodoBoard.sync.v1";
+var BIN_API = "https://extendsclass.com/api/json-storage/bin";
+var syncCfg = null;    // {id, salt, keyRaw}
+var cryptoKey = null;  // in-memory AES key
+var pushTimer = null;
+var pushing = false;
+var pushFailed = false;
+
+function cryptoOK() {
+  try {
+    if (!window.crypto || !window.crypto.subtle) { return false; }
+    var p = location.protocol;
+    return p === "https:" || p === "file:" || location.hostname === "localhost" || location.hostname === "127.0.0.1";
+  } catch (e) { return false; }
+}
+
+function loadSyncCfg() {
+  try { var r = localStorage.getItem(SYNC_KEY); if (r) { return JSON.parse(r); } } catch (e) {}
+  return null;
+}
+
+function saveSyncCfg(cfg) {
+  try { localStorage.setItem(SYNC_KEY, JSON.stringify(cfg)); } catch (e) {}
+}
+
+function syncReady() { return !!(syncCfg && cryptoKey); }
+
+function b64FromBuf(buf) {
+  var bytes = new Uint8Array(buf);
+  var bin = "";
+  for (var i = 0; i < bytes.length; i++) { bin += String.fromCharCode(bytes[i]); }
+  return btoa(bin);
+}
+
+function bufFromB64(str) {
+  var bin = atob(str);
+  var bytes = new Uint8Array(bin.length);
+  for (var i = 0; i < bin.length; i++) { bytes[i] = bin.charCodeAt(i); }
+  return bytes;
+}
+
+function importRawKey(keyRawB64) {
+  return crypto.subtle.importKey("raw", bufFromB64(keyRawB64), { name: "AES-GCM" }, false, ["encrypt", "decrypt"]);
+}
+
+function deriveKey(password, saltB64) {
+  var enc = new TextEncoder();
+  return crypto.subtle.importKey("raw", enc.encode(password), "PBKDF2", false, ["deriveKey"]).then(function (base) {
+    return crypto.subtle.deriveKey(
+      { name: "PBKDF2", salt: bufFromB64(saltB64), iterations: 120000, hash: "SHA-256" },
+      base, { name: "AES-GCM", length: 256 }, true, ["encrypt", "decrypt"]);
+  });
+}
+
+function encryptState(key) {
+  var iv = crypto.getRandomValues(new Uint8Array(12));
+  var data = new TextEncoder().encode(JSON.stringify(state));
+  return crypto.subtle.encrypt({ name: "AES-GCM", iv: iv }, key, data).then(function (ct) {
+    return { v: 2, iv: b64FromBuf(iv.buffer), ct: b64FromBuf(ct) };
+  });
+}
+
+function decryptPayload(key, payload) {
+  return crypto.subtle.decrypt({ name: "AES-GCM", iv: bufFromB64(payload.iv) }, key, bufFromB64(payload.ct)).then(function (plain) {
+    return JSON.parse(new TextDecoder().decode(plain));
+  });
+}
+
+function schedulePush() {
+  if (pushTimer) { clearTimeout(pushTimer); }
+  pushTimer = setTimeout(cloudPush, 800);
+}
+
+function cloudPush() {
+  if (!syncReady() || pushing) { return; }
+  pushing = true;
+  encryptState(cryptoKey).then(function (payload) {
+    return fetch(BIN_API + "/" + syncCfg.id, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+  }).then(function (r) {
+    pushing = false;
+    if (r.status === 404) {
+      syncCfg = null;
+      cryptoKey = null;
+      try { localStorage.removeItem(SYNC_KEY); } catch (e) {}
+      if (!pushFailed) { pushFailed = true; toast("云端数据已失效，请重新打开「云同步」创建"); }
+    } else if (!r.ok && !pushFailed) {
+      pushFailed = true;
+      toast("云同步上传失败(" + r.status + ")，数据仍保存在本机");
+    } else if (r.ok) {
+      pushFailed = false;
+    }
+  }).catch(function () {
+    pushing = false;
+    if (!pushFailed) { pushFailed = true; toast("云同步上传失败，请检查网络"); }
+  });
+}
+
+function cloudPull() {
+  if (!syncReady()) { return Promise.resolve(false); }
+  return fetch(BIN_API + "/" + syncCfg.id).then(function (r) {
+    if (!r.ok) { throw new Error("http " + r.status); }
+    return r.json();
+  }).then(function (payload) {
+    if (!payload || payload.v !== 2) { return false; }
+    return decryptPayload(cryptoKey, payload).then(function (cloud) {
+      if (!validState(cloud)) { return false; }
+      cloud = normalizeState(cloud);
+      var localTs = (state.meta && state.meta.updatedTs) || 0;
+      var cloudTs = (cloud.meta && cloud.meta.updatedTs) || 0;
+      if (cloudTs >= localTs) {
+        state = cloud;
+        persistLocal();
+        return true;
+      }
+      schedulePush();
+      return false;
+    });
+  });
+}
+
+function syncCode() { return syncCfg ? (syncCfg.id + "." + syncCfg.salt) : ""; }
+
+function showCloudSync() {
+  var body = $("syncBody");
+  $("syncTitle").textContent = "云同步";
+  if (!cryptoOK()) {
+    body.innerHTML = '<p style="font-size:14px;line-height:1.9">当前环境不支持加密同步。请通过网页地址（https 开头）打开本页面后使用云同步；直接双击打开的文件版只能保存在本机。</p>';
+    $("syncOverlay").style.display = "flex";
+    return;
+  }
+  if (syncReady()) {
+    var urlHint = (location.protocol === "https:" || location.protocol === "http:")
+      ? "手机访问方法：手机浏览器打开这个同样的网址（" + location.origin + "/），点「云同步」→ 方式二连接。"
+      : "手机访问方法：手机浏览器打开本应用的网页版地址，点「云同步」→ 方式二连接。";
+    body.innerHTML = '<p class="syncstatus">已连接加密云同步，手机和电脑共用一份数据。</p>'
+      + '<p style="font-size:13px;color:#475569;line-height:1.9">' + esc(urlHint) + '<br>添加到手机桌面：安卓 Chrome 右上角菜单→「添加到主屏幕」；iPhone Safari 底部「分享」→「添加到主屏幕」。</p>'
+      + '<div class="syncbox"><div class="synclabel">同步码（在新设备连接时填写）</div><input id="syncCodeInput" readonly value="' + esc(syncCode()) + '" onclick="this.select()"></div>'
+      + '<div class="modalbtns" style="justify-content:flex-start"><button class="primary" onclick="copySyncCode()">复制同步码</button><button onclick="doManualSync()">立即同步一次</button></div>'
+      + '<p style="font-size:12px;color:#9aa4b2;line-height:1.8;margin-top:10px">同步码 + 同步密码缺一不可。密码无法找回，请妥善记录。</p>';
+  } else {
+    body.innerHTML = '<p class="syncstatus">尚未连接云同步。连接后数据加密存到云端，手机和电脑在任何地方都能打开同一个看板。</p>'
+      + '<div class="syncsection"><b>方式一：创建新同步（第一台设备用）</b>'
+      + '<input id="newPw1" type="password" placeholder="设置同步密码（至少6位，请牢记）">'
+      + '<input id="newPw2" type="password" placeholder="再输入一次密码">'
+      + '<button class="primary" onclick="createSync()">创建并开始同步</button></div>'
+      + '<div class="sync-section"><b>方式二：连接已有同步（新设备用）</b>'
+      + '<input id="joinCode" type="text" placeholder="同步码">'
+      + '<input id="joinPw" type="password" placeholder="同步密码">'
+      + '<button onclick="joinSync()">连接</button></div>'
+      + '<p style="font-size:12px;color:#9aa4b2;line-height:1.8">数据在上传前已用你的密码加密，云端只保存密文。</p>';
+  }
+  $("syncOverlay").style.display = "flex";
+}
+
+function closeSync() { $("syncOverlay").style.display = "none"; }
+
+function copySyncCode() {
+  modalTextCache = syncCode();
+  var codeInput = $("syncCodeInput");
+  if (codeInput) { codeInput.select(); }
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(syncCode()).then(function () { toast("同步码已复制"); }, function () { toast("请在输入框中手动复制"); });
+  } else {
+    try { document.execCommand("copy"); toast("同步码已复制"); } catch (e) { toast("请在输入框中手动复制"); }
+  }
+}
+
+function doManualSync() {
+  cloudPull().then(function (changed) {
+    if (changed) { render(); }
+    toast(changed ? "已拉取云端最新数据" : "已是最新，本机数据已上传");
+    if (!changed) { schedulePush(); }
+  }).catch(function () { toast("同步失败，请检查网络"); });
+}
+
+function createSync() {
+  var pw1 = $("newPw1").value;
+  var pw2 = $("newPw2").value;
+  if (pw1.length < 6) { toast("密码至少 6 位"); return; }
+  if (pw1 !== pw2) { toast("两次输入的密码不一致"); return; }
+  var salt = b64FromBuf(crypto.getRandomValues(new Uint8Array(16)).buffer);
+  deriveKey(pw1, salt).then(function (key) {
+    return fetch(BIN_API, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: '{"v":2,"iv":"","ct":""}'
+    }).then(function (r) { return r.json(); }).then(function (resp) {
+      if (!resp || !resp.id) { throw new Error("no id"); }
+      return crypto.subtle.exportKey("raw", key).then(function (raw) {
+        syncCfg = { id: resp.id, salt: salt, keyRaw: b64FromBuf(raw) };
+        cryptoKey = key;
+        pushFailed = false;
+        saveSyncCfg(syncCfg);
+        cloudPush();
+        showCloudSync();
+        toast("云同步已创建，请记住同步密码");
+      });
+    });
+  }).catch(function () { toast("创建失败，请检查网络后重试"); });
+}
+
+function joinSync() {
+  var code = $("joinCode").value.replace(/^\s+|\s+$/g, "");
+  var pw = $("joinPw").value;
+  var dot = code.indexOf(".");
+  if (dot <= 0 || dot >= code.length - 1) { toast("同步码格式不对，请完整复制"); return; }
+  var id = code.slice(0, dot);
+  var salt = code.slice(dot + 1);
+  deriveKey(pw, salt).then(function (key) {
+    return fetch(BIN_API + "/" + id).then(function (r) {
+      if (r.status === 404) { throw new Error("notfound"); }
+      if (!r.ok) { throw new Error("http " + r.status); }
+      return r.json();
+    }).then(function (payload) {
+      if (!payload || payload.v !== 2) { throw new Error("empty"); }
+      return decryptPayload(key, payload).then(function (cloud) {
+        if (!validState(cloud)) { throw new Error("bad"); }
+        return crypto.subtle.exportKey("raw", key).then(function (raw) {
+          syncCfg = { id: id, salt: salt, keyRaw: b64FromBuf(raw) };
+          cryptoKey = key;
+          pushFailed = false;
+          saveSyncCfg(syncCfg);
+          state = normalizeState(cloud);
+          persistLocal();
+          render();
+          showCloudSync();
+          toast("已连接，云端数据已同步");
+        });
+      });
+    });
+  }).catch(function (e) {
+    var m = String(e && e.message || "");
+    if (m === "notfound") { toast("同步码不存在，请核对后重试"); }
+    else if (m === "empty") { toast("该同步暂无数据，请先在创建设备上同步一次"); }
+    else { toast("连接失败：同步码或密码错误"); }
+  });
+}
+
+function initApp() {
+  state = loadLocalState() || newState();
+  syncCfg = loadSyncCfg();
+  afterLoad();
+  if (syncCfg && syncCfg.keyRaw && cryptoOK()) {
+    importRawKey(syncCfg.keyRaw).then(function (key) {
+      cryptoKey = key;
+      return cloudPull();
+    }).then(function (changed) {
+      if (changed) { render(); }
+    }).catch(function () {});
+  }
+}
+
+function afterLoad() {
+  $("fDate").value = todayStr();
+  render();
+}
+
+// ---------- 数据视图 ----------
+function pendingFor(date) {
+  var out = [];
+  for (var i = 0; i < state.items.length; i++) {
+    var it = state.items[i];
+    if (it.status === "todo" && it.date === date) { out.push(it); }
+  }
+  out.sort(function (a, b) { return a.createdAt - b.createdAt; });
+  return out;
+}
+
+function doneFor(date) {
+  var out = [];
+  for (var i = 0; i < state.items.length; i++) {
+    var it = state.items[i];
+    if (it.status === "done" && it.doneAt && fmtDate(new Date(it.doneAt)) === date) { out.push(it); }
+  }
+  out.sort(function (a, b) { return a.doneAt - b.doneAt; });
+  return out;
+}
+
+// ---------- 渲染 ----------
+function render() {
+  $("todayLine").textContent = "今天是 " + dateLabelCN(todayStr());
+  if ($("jumpDate").value !== viewDate) { $("jumpDate").value = viewDate; }
+  $("dateLabel").textContent = dateLabelCN(viewDate) + (viewDate === todayStr() ? "（今天）" : "");
+  var pend = pendingFor(viewDate);
+  var done = doneFor(viewDate);
+  $("statChips").innerHTML = '<span class="chip">待办 ' + pend.length + '</span><span class="chip green">已完成 ' + done.length + '</span>';
+  renderTodayStrip();
+  renderPending(pend);
+  renderDone(done);
+  renderFuture();
+  renderReminder();
+  updateFutureHint();
+}
+
+// ---------- 今日待办醒目面板 ----------
+var overdueOpen = false;
+
+function renderTodayStrip() {
+  var t = todayStr();
+  var pend = pendingFor(t);
+  var done = doneFor(t);
+  var badge = $("todayBadge");
+  if (pend.length === 0) {
+    badge.textContent = done.length > 0 ? "已全部完成" : "暂无待办";
+    badge.className = "todaybadge" + (done.length > 0 ? " done" : "");
+  } else {
+    badge.textContent = pend.length + " 项";
+    badge.className = "todaybadge";
+  }
+  var box = $("todayList");
+  if (pend.length === 0) {
+    box.innerHTML = '<p class="empty">' + (done.length > 0 ? "今天的待办已全部完成，干得漂亮！" : "今天还没有待办事项，在下方添加一条吧。") + '</p>';
+  } else {
+    var html = "";
+    for (var i = 0; i < pend.length; i++) {
+      var it = pend[i];
+      html += '<div class="trow">'
+        + '<span class="tnum">' + (i + 1) + '</span>'
+        + '<button class="check" title="完成" onclick="doComplete(\'' + it.id + '\')"></button>'
+        + '<span class="ttitle" onclick="gotoAndEdit(\'' + it.id + '\')" title="点击编辑">' + esc(it.title) + (it.note ? ' <span class="chip amber">有注意事项</span>' : '') + '</span>'
+        + '<div class="tprog"><div class="pbar"><i style="width:' + it.percent + '%"></i></div><div class="pmeta">' + it.percent + '%</div></div>'
+        + '<button onclick="doRoll(\'' + it.id + '\')">移到明天</button>'
+        + '</div>';
+    }
+    box.innerHTML = html;
+  }
+  renderOverdue();
+}
+
+function renderOverdue() {
+  var t = todayStr();
+  var list = [];
+  for (var i = 0; i < state.items.length; i++) {
+    var it = state.items[i];
+    if (it.status === "todo" && it.date < t) { list.push(it); }
+  }
+  list.sort(function (a, b) { return a.date < b.date ? -1 : (a.date > b.date ? 1 : 0); });
+  var box = $("overdueArea");
+  if (list.length === 0) { box.innerHTML = ""; return; }
+  var html = '<div class="overduehead" onclick="overdueOpen=!overdueOpen;renderOverdue()">' + (overdueOpen ? "▲" : "▼") + " 另有 " + list.length + " 项已逾期未处理（点击展开）</div>";
+  if (overdueOpen) {
+    for (var k = 0; k < list.length; k++) {
+      var o = list[k];
+      html += '<div class="overdueitem"><span class="chip red">' + o.date.slice(5) + '</span><span class="t">' + esc(o.title) + '</span>'
+        + '<button onclick="pullToToday(\'' + o.id + '\')">移到今天</button>'
+        + '<button onclick="doRoll(\'' + o.id + '\')">移到明天</button></div>';
+    }
+  }
+  box.innerHTML = html;
+}
+
+function pullToToday(id) {
+  updateItem(state, id, { date: todayStr() });
+  saveState();
+  render();
+  toast("已移到今天");
+}
+
+function gotoAndEdit(id) {
+  var it = findItem(state, id);
+  if (!it) { return; }
+  viewDate = it.date;
+  editingId = id;
+  render();
+  var card = document.getElementById("card_" + id);
+  if (card && card.scrollIntoView) { card.scrollIntoView({ behavior: "smooth", block: "center" }); }
+}
+
+// 一键生成明天待办：今天没做完的 + 之前逾期的，全部结转到明天
+function genTomorrow() {
+  var t = todayStr();
+  var tmr = addDays(t, 1);
+  var todayCnt = 0;
+  var overdueCnt = 0;
+  for (var i = 0; i < state.items.length; i++) {
+    var it = state.items[i];
+    if (it.status === "todo" && it.date <= t) {
+      if (it.date === t) { todayCnt++; } else { overdueCnt++; }
+    }
+  }
+  var total = todayCnt + overdueCnt;
+  if (total === 0) {
+    toast("今天的事项都已完成，无需生成明天待办");
+    return;
+  }
+  var msg = "根据今天的工作情况，将把 " + total + " 项未完成工作结转到明天（" + tmr.slice(5) + " " + weekCN(tmr) + "）：\n\n";
+  msg += "· 今日未完成 " + todayCnt + " 项\n";
+  if (overdueCnt > 0) { msg += "· 此前逾期未处理 " + overdueCnt + " 项\n"; }
+  msg += "\n已安排在明天及之后的事项不受影响。确定生成吗？";
+  if (!confirm(msg)) { return; }
+  var moved = carryUnfinishedToTomorrow(state, t);
+  saveState();
+  viewDate = tmr;
+  editingId = null;
+  render();
+  toast("已生成明天待办 " + moved.length + " 项，看板已切换到明天");
+}
+
+function renderPending(pend) {
+  $("pendingHead").textContent = "待办事项（" + pend.length + "）";
+  var box = $("pendingList");
+  if (pend.length === 0) {
+    box.innerHTML = '<p class="empty">这一天暂无待办事项，在上方添加一条吧。</p>';
+    return;
+  }
+  var html = "";
+  for (var i = 0; i < pend.length; i++) { html += itemCard(pend[i]); }
+  box.innerHTML = html;
+}
+
+function itemCard(it) {
+  if (editingId === it.id) { return editCard(it); }
+  var t = todayStr();
+  var chips = "";
+  if (it.date < t) { chips += '<span class="chip red">已逾期</span>'; }
+  if (it.note) { chips += '<span class="chip amber">有注意事项</span>'; }
+  if (it.rollCount > 0) { chips += '<span class="chip gray">已顺延' + it.rollCount + '次</span>'; }
+  var detail = "";
+  if (it.progress || it.note) {
+    detail = '<div class="detail">'
+      + (it.progress ? '<p><b>进度说明：</b>' + esc(it.progress) + '</p>' : '')
+      + (it.note ? '<p><b>注意事项：</b>' + esc(it.note) + '</p>' : '')
+      + '</div>';
+  }
+  var rollLabel = (it.date >= t) ? "顺延一天" : "明天继续";
+  return '<div class="item" id="card_' + it.id + '">'
+    + '<button class="check" title="完成" onclick="doComplete(\'' + it.id + '\')"></button>'
+    + '<div class="itembody">'
+    + '<div class="itemtitle">' + esc(it.title) + chips + '</div>'
+    + '<div class="pbar"><i style="width:' + it.percent + '%"></i></div>'
+    + '<div class="pmeta">当前进度 ' + it.percent + '%</div>'
+    + detail
+    + '<div class="acts">'
+    + '<button onclick="doRoll(\'' + it.id + '\')">' + rollLabel + '</button>'
+    + '<button onclick="startEdit(\'' + it.id + '\')">编辑</button>'
+    + '<button class="danger" onclick="doDelete(\'' + it.id + '\')">删除</button>'
+    + '</div>'
+    + '</div></div>';
+}
+
+function editCard(it) {
+  return '<div class="item"><div class="itembody editbox">'
+    + '<input id="eTitle_' + it.id + '" value="' + esc(it.title) + '" maxlength="100">'
+    + '<div class="formrow">'
+    + '<label>日期 <input type="date" id="eDate_' + it.id + '" value="' + it.date + '"></label>'
+    + '<label class="slider">进度 <input type="range" id="ePercent_' + it.id + '" min="0" max="100" step="5" value="' + it.percent + '" oninput="document.getElementById(\'ePercentOut_' + it.id + '\').textContent=this.value+\'%\'"><span id="ePercentOut_' + it.id + '">' + it.percent + '%</span></label>'
+    + '</div>'
+    + '<input id="eProgress_' + it.id + '" placeholder="工作进度说明" value="' + esc(it.progress) + '" maxlength="200">'
+    + '<input id="eNote_' + it.id + '" placeholder="注意事项" value="' + esc(it.note) + '" maxlength="200">'
+    + '<div class="acts"><button class="primary" onclick="saveEdit(\'' + it.id + '\')">保存</button><button onclick="cancelEdit()">取消</button></div>'
+    + '</div></div>';
+}
+
+function renderDone(done) {
+  $("doneHead").innerHTML = "已完成（" + done.length + "）<span class='caret'>" + (doneOpen ? "▲" : "▼") + "</span>";
+  var box = $("doneList");
+  box.style.display = doneOpen ? "block" : "none";
+  if (!doneOpen) { return; }
+  if (done.length === 0) {
+    box.innerHTML = '<p class="empty">这一天还没有完成的事项。</p>';
+    return;
+  }
+  var html = "";
+  for (var i = 0; i < done.length; i++) {
+    var it = done[i];
+    var d = new Date(it.doneAt);
+    var hm = pad2(d.getHours()) + ":" + pad2(d.getMinutes());
+    html += '<div class="doneitem">'
+      + '<span class="t">' + esc(it.title) + '</span>'
+      + '<span class="time">完成于 ' + hm + '</span>'
+      + '<button onclick="doUndo(\'' + it.id + '\')">恢复</button>'
+      + '<button class="danger" onclick="doDelete(\'' + it.id + '\')">删除</button>'
+      + '</div>';
+  }
+  box.innerHTML = html;
+}
+
+function renderFuture() {
+  var t = todayStr();
+  var list = scheduledInRange(state, addDays(t, 1), "9999-12-31");
+  var box = $("futureList");
+  if (list.length === 0) {
+    box.innerHTML = '<p class="empty">暂无未来计划。添加待办时可以选择未来的日期，提前安排工作。</p>';
+    return;
+  }
+  var groups = {};
+  var order = [];
+  for (var i = 0; i < list.length; i++) {
+    var d = list[i].date;
+    if (!groups[d]) { groups[d] = []; order.push(d); }
+    groups[d].push(list[i]);
+  }
+  var html = "";
+  for (var g = 0; g < order.length; g++) {
+    var date = order[g];
+    var arr = groups[date];
+    var tag = (date === addDays(t, 1)) ? "（明天）" : "";
+    html += '<div class="fgroup"><div class="fdate">' + date.slice(5) + ' ' + weekCN(date) + tag + ' · ' + arr.length + '项 <button onclick="jumpTo(\'' + date + '\')">查看当天</button></div><ul>';
+    for (var k = 0; k < arr.length; k++) {
+      html += '<li>' + esc(arr[k].title) + (arr[k].note ? ' <span class="chip amber">有注意事项</span>' : '') + '</li>';
+    }
+    html += '</ul></div>';
+  }
+  box.innerHTML = html;
+}
+
+function reminderInfo() {
+  var t = todayStr();
+  var msgs = [];
+  var wd = parseDate(t).getDay();
+  if ((wd === 5 || wd === 6 || wd === 0) && state.meta.lastWeekly !== mondayOf(t)) {
+    msgs.push({ text: "本周的工作周报还没有生成，可以一键生成后复制到钉钉周报。", act: "weekly" });
+  }
+  var mr = monthRange(t);
+  var daysLeft = Math.round((parseDate(mr[1]).getTime() - parseDate(t).getTime()) / 86400000);
+  if (daysLeft <= 2 && state.meta.lastMonthly !== t.slice(0, 7)) {
+    msgs.push({ text: "本月即将结束，记得生成工作月报。", act: "monthly" });
+  }
+  return msgs;
+}
+
+function renderReminder() {
+  var box = $("reminder");
+  var msgs = reminderInfo();
+  if (msgs.length === 0) { box.innerHTML = ""; return; }
+  var html = "";
+  for (var i = 0; i < msgs.length; i++) {
+    html += '<div class="banner"><span>' + esc(msgs[i].text) + '</span><button class="primary" onclick="' + (msgs[i].act === "weekly" ? "genWeekly()" : "genMonthly()") + '">立即生成</button></div>';
+  }
+  box.innerHTML = html;
+}
+
+// ---------- 交互 ----------
+function shiftDay(n) { viewDate = addDays(viewDate, n); editingId = null; render(); }
+function goToday() { viewDate = todayStr(); editingId = null; render(); }
+function jumpTo(v) { if (v) { viewDate = v; editingId = null; render(); } }
+function toggleDone() { doneOpen = !doneOpen; render(); }
+
+function addFromForm(ev) {
+  ev.preventDefault();
+  var title = $("fTitle").value.replace(/^\s+|\s+$/g, "");
+  if (!title) { toast("请先填写事项内容"); $("fTitle").focus(); return false; }
+  var date = $("fDate").value || todayStr();
+  addItem(state, {
+    title: title,
+    date: date,
+    percent: parseInt($("fPercent").value, 10) || 0,
+    progress: $("fProgress").value.replace(/^\s+|\s+$/g, ""),
+    note: $("fNote").value.replace(/^\s+|\s+$/g, "")
+  });
+  saveState();
+  $("fTitle").value = "";
+  $("fProgress").value = "";
+  $("fNote").value = "";
+  $("fPercent").value = 0;
+  $("fPercentOut").textContent = "0%";
+  if (date > todayStr()) {
+    toast("已加入未来计划（" + date + " " + weekCN(date) + "）");
+  } else if (date !== viewDate) {
+    toast("已添加到 " + date);
+    viewDate = date;
+  } else {
+    toast("已添加");
+  }
+  render();
+  return false;
+}
+
+function updateFutureHint() {
+  var d = $("fDate").value;
+  $("futureHint").textContent = (d && d > todayStr()) ? "这是未来日期的事项，将先显示在下方「未来计划」，到当天自动进入看板。" : "";
+}
+
+function doComplete(id) {
+  var card = document.getElementById("card_" + id);
+  if (card) { card.classList.add("completing"); }
+  setTimeout(function () {
+    completeItem(state, id);
+    saveState();
+    render();
+    toast("已完成一项");
+  }, 380);
+}
+
+function doUndo(id) {
+  undoItem(state, id);
+  saveState();
+  render();
+  toast("已恢复到待办");
+}
+
+function doRoll(id) {
+  var it = rollTomorrow(state, id, todayStr());
+  if (it) {
+    saveState();
+    render();
+    toast("已安排到 " + it.date.slice(5) + "（" + weekCN(it.date) + "）");
+  }
+}
+
+function doDelete(id) {
+  if (!confirm("确定删除这条事项吗？删除后不可恢复。")) { return; }
+  deleteItem(state, id);
+  saveState();
+  render();
+}
+
+function startEdit(id) { editingId = id; render(); }
+function cancelEdit() { editingId = null; render(); }
+
+function saveEdit(id) {
+  var old = findItem(state, id);
+  var dateVal = $("eDate_" + id).value;
+  updateItem(state, id, {
+    title: $("eTitle_" + id).value.replace(/^\s+|\s+$/g, "") || (old ? old.title : ""),
+    date: dateVal || (old ? old.date : todayStr()),
+    percent: parseInt($("ePercent_" + id).value, 10) || 0,
+    progress: $("eProgress_" + id).value.replace(/^\s+|\s+$/g, ""),
+    note: $("eNote_" + id).value.replace(/^\s+|\s+$/g, "")
+  });
+  editingId = null;
+  saveState();
+  render();
+  toast("已保存修改");
+}
+
+// ---------- 周报 / 月报（大点小点提纲编辑器） ----------
+var currentEdit = null; // { key, kind, outline }
+
+function genWeekly() { openEditor("weekly"); }
+function genMonthly() { openEditor("monthly"); }
+
+function openEditor(kind) {
+  var key = (kind === "weekly") ? weeklyKey(viewDate) : monthlyKey(viewDate);
+  var outline = getReport(state, key, viewDate, kind);
+  if (kind === "weekly") { state.meta.lastWeekly = mondayOf(viewDate); }
+  else { state.meta.lastMonthly = viewDate.slice(0, 7); }
+  saveState();
+  currentEdit = { key: key, kind: kind, outline: outline };
+  $("editorTitle").textContent = outline.titleLine;
+  renderEditor();
+  $("editorOverlay").style.display = "flex";
+}
+
+function renderEditor() {
+  var o = currentEdit.outline;
+  var html = "";
+  for (var s = 0; s < o.sections.length; s++) {
+    var sec = o.sections[s];
+    html += '<div class="edsec"><h4>' + SEC_NUMS[s] + '、' + esc(sec.title) + '</h4><div class="edpoints">';
+    for (var i = 0; i < sec.points.length; i++) {
+      var p = sec.points[i];
+      html += '<div class="edpoint"><div class="edprow">'
+        + '<span class="ednum">（' + (i + 1) + '）</span>'
+        + '<input class="edtitle" value="' + esc(p.title) + '" placeholder="大点标题" oninput="edInput(' + s + ',' + i + ',-1,this.value)">'
+        + '<button onclick="editorAddChild(' + s + ',' + i + ')">＋小点</button>'
+        + '<button class="danger" onclick="editorDelBig(' + s + ',' + i + ')">删除</button>'
+        + '</div><div class="edkids">';
+      for (var c = 0; c < p.children.length; c++) {
+        html += '<div class="edkid"><span class="edknum">' + (c + 1) + '.</span>'
+          + '<input value="' + esc(p.children[c]) + '" placeholder="小点内容" oninput="edInput(' + s + ',' + i + ',' + c + ',this.value)">'
+          + '<button class="danger" onclick="editorDelChild(' + s + ',' + i + ',' + c + ')">×</button></div>';
+      }
+      html += '</div></div>';
+    }
+    html += '<button class="addbig" onclick="editorAddBig(' + s + ')">＋ 添加大点</button></div></div>';
+  }
+  $("editorBody").innerHTML = html;
+}
+
+function edInput(s, i, c, v) {
+  var p = currentEdit.outline.sections[s].points[i];
+  if (c === -1) { p.title = v; } else { p.children[c] = v; }
+}
+
+function editorAddBig(s) {
+  currentEdit.outline.sections[s].points.push({ title: "", children: [] });
+  renderEditor();
+}
+
+function editorDelBig(s, i) {
+  if (!confirm("删除这个大点及其全部小点？")) { return; }
+  currentEdit.outline.sections[s].points.splice(i, 1);
+  renderEditor();
+}
+
+function editorAddChild(s, i) {
+  currentEdit.outline.sections[s].points[i].children.push("");
+  renderEditor();
+}
+
+function editorDelChild(s, i, c) {
+  currentEdit.outline.sections[s].points[i].children.splice(c, 1);
+  renderEditor();
+}
+
+function saveEditor() {
+  state.reports[currentEdit.key] = currentEdit.outline;
+  saveState();
+  toast("已保存");
+}
+
+function previewEditor() {
+  state.reports[currentEdit.key] = currentEdit.outline;
+  saveState();
+  modalTextCache = renderOutlineText(currentEdit.outline);
+  modalFileCache = (currentEdit.kind === "weekly")
+    ? ("工作周报_" + mondayOf(viewDate) + ".md")
+    : ("工作月报_" + viewDate.slice(0, 4) + "年" + parseInt(viewDate.slice(5, 7), 10) + "月.md");
+  $("modalTitle").textContent = currentEdit.outline.titleLine;
+  $("modalText").textContent = modalTextCache;
+  $("overlay").style.display = "flex";
+}
+
+function regenDraft() {
+  if (!confirm("重新生成将覆盖当前已编辑的内容，确定吗？")) { return; }
+  currentEdit.outline = (currentEdit.kind === "weekly")
+    ? draftWeeklyOutline(state, viewDate)
+    : draftMonthlyOutline(state, viewDate);
+  state.reports[currentEdit.key] = currentEdit.outline;
+  saveState();
+  $("editorTitle").textContent = currentEdit.outline.titleLine;
+  renderEditor();
+  toast("草稿已重新生成");
+}
+
+function closeEditor() {
+  if (currentEdit) {
+    state.reports[currentEdit.key] = currentEdit.outline;
+    saveState();
+  }
+  $("editorOverlay").style.display = "none";
+  renderReminder();
+}
+
+function closeModal() { $("overlay").style.display = "none"; }
+
+function copyModal() {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(modalTextCache).then(
+      function () { toast("已复制到剪贴板"); },
+      function () { fallbackCopy(); }
+    );
+  } else {
+    fallbackCopy();
+  }
+}
+
+function fallbackCopy() {
+  var ta = document.createElement("textarea");
+  ta.value = modalTextCache;
+  document.body.appendChild(ta);
+  ta.select();
+  try {
+    document.execCommand("copy");
+    toast("已复制到剪贴板");
+  } catch (e) {
+    toast("复制失败，请在弹窗中手动全选复制");
+  }
+  document.body.removeChild(ta);
+}
+
+function downloadModal() {
+  downloadText(modalFileCache, modalTextCache);
+}
+
+function downloadText(name, text) {
+  var blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+  var a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(function () { URL.revokeObjectURL(a.href); }, 2000);
+}
+
+// ---------- 备份 / 恢复 ----------
+function backup() {
+  downloadText("工作看板备份_" + todayStr() + ".json", JSON.stringify(state, null, 2));
+  toast("备份文件已开始下载");
+}
+
+function restoreFile(input) {
+  var f = input.files && input.files[0];
+  if (!f) { return; }
+  var rd = new FileReader();
+  rd.onload = function () {
+    try {
+      var s = JSON.parse(rd.result);
+      if (!s || s.version !== 1 || Object.prototype.toString.call(s.items) !== "[object Array]") {
+        throw new Error("bad format");
+      }
+      if (!confirm("恢复备份将覆盖当前全部数据，确定继续吗？")) { return; }
+      state = s;
+      if (!state.meta) { state.meta = {}; }
+      saveState();
+      render();
+      toast("已恢复备份");
+    } catch (e) {
+      alert("备份文件无法识别，请选择本看板导出的 JSON 备份文件。");
+    }
+    input.value = "";
+  };
+  rd.readAsText(f, "utf-8");
+}
+
+// ---------- 初始化 ----------
+initApp();
+
+</script>
+</body>
+</html>
