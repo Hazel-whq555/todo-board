@@ -1,0 +1,12 @@
+{
+  "name": "\u5de5\u4f5c\u5f85\u529e\u770b\u677f",
+  "short_name": "\u5f85\u529e\u770b\u677f",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "background_color": "#f2f4f8",
+  "theme_color": "#2563eb",
+  "icons": [
+    { "src": "icon.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}
