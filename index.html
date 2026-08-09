@@ -48,6 +48,9 @@ form input:focus, .navbtns input:focus { outline: 2px solid #bfdbfe; border-colo
 .item { display: flex; gap: 12px; padding: 14px 6px; border-bottom: 1px solid #eef1f5; transition: opacity .35s, transform .35s; }
 .item:last-child { border-bottom: none; }
 .item.completing { opacity: 0; transform: translateX(30px); }
+.grip { flex: none; color: #c3cad4; cursor: grab; touch-action: none; font-size: 15px; padding: 2px 5px; user-select: none; -webkit-user-select: none; margin-top: 2px; }
+.grip:active { cursor: grabbing; color: #2563eb; }
+.item.dragging { opacity: .45; background: #f0f6ff; border-radius: 8px; }
 .check { flex: none; width: 26px; height: 26px; border-radius: 50%; border: 2px solid #b6c2d2; background: #fff; cursor: pointer; margin-top: 2px; position: relative; }
 .check:hover { border-color: #2563eb; background: #eff4ff; }
 .itembody { flex: 1; min-width: 0; }
@@ -351,14 +354,34 @@ function newItem(opts, now) {
     createdAt: ts,
     updatedAt: ts,
     doneAt: null,
-    rollCount: 0
+    rollCount: 0,
+    order: null
   };
 }
 
 function addItem(state, opts, now) {
   var it = newItem(opts, now);
+  var max = -1;
+  for (var i = 0; i < state.items.length; i++) {
+    var o = state.items[i];
+    if (o.date === it.date && typeof o.order === "number" && o.order > max) { max = o.order; }
+  }
+  it.order = max + 1;
   state.items.push(it);
   return it;
+}
+
+// Rewrite order values from a drag-and-drop id sequence (top = highest priority).
+function applyOrder(state, ids) {
+  for (var i = 0; i < ids.length; i++) {
+    var it = findItem(state, ids[i]);
+    if (it) { it.order = i; }
+  }
+  return state;
+}
+
+function orderOf(it) {
+  return (typeof it.order === "number") ? it.order : 0;
 }
 
 function completeItem(state, id, when) {
@@ -988,7 +1011,9 @@ function joinSync() {
 
 function initApp() {
   state = loadLocalState() || newState();
+  migrateOrder();
   syncCfg = loadSyncCfg();
+  $("pendingList").addEventListener("pointerdown", onGripDown);
   afterLoad();
   if (syncCfg && syncCfg.keyRaw && cryptoOK()) {
     importRawKey(syncCfg.keyRaw).then(function (key) {
@@ -997,6 +1022,78 @@ function initApp() {
     }).then(function (changed) {
       if (changed) { render(); }
     }).catch(function () {});
+  }
+}
+
+// ---------- 拖动排序（优先级） ----------
+var dragState = null;
+
+function onGripDown(e) {
+  var grip = (e.target && e.target.closest) ? e.target.closest(".grip") : null;
+  if (!grip) { return; }
+  var card = grip.closest(".item");
+  if (!card || !card.getAttribute("data-id")) { return; }
+  e.preventDefault();
+  dragState = { el: card, moved: false };
+  card.classList.add("dragging");
+  window.addEventListener("pointermove", onGripMove);
+  window.addEventListener("pointerup", onGripUp);
+  window.addEventListener("pointercancel", onGripUp);
+}
+
+function onGripMove(e) {
+  if (!dragState) { return; }
+  dragState.moved = true;
+  var list = $("pendingList");
+  var cards = list.querySelectorAll(".item[data-id]");
+  var el = dragState.el;
+  var before = null;
+  for (var i = 0; i < cards.length; i++) {
+    var c = cards[i];
+    if (c === el) { continue; }
+    var r = c.getBoundingClientRect();
+    if (e.clientY < r.top + r.height / 2) { before = c; break; }
+  }
+  if (before) { list.insertBefore(el, before); }
+  else { list.appendChild(el); }
+}
+
+function onGripUp() {
+  window.removeEventListener("pointermove", onGripMove);
+  window.removeEventListener("pointerup", onGripUp);
+  window.removeEventListener("pointercancel", onGripUp);
+  if (!dragState) { return; }
+  var el = dragState.el;
+  el.classList.remove("dragging");
+  if (dragState.moved) {
+    var nodes = $("pendingList").querySelectorAll(".item[data-id]");
+    var ids = [];
+    for (var i = 0; i < nodes.length; i++) { ids.push(nodes[i].getAttribute("data-id")); }
+    applyOrder(state, ids);
+    saveState();
+    toast("优先级已更新");
+  }
+  dragState = null;
+  render();
+}
+
+// Assign order to legacy items (created before ordering existed).
+function migrateOrder() {
+  var need = false;
+  for (var i = 0; i < state.items.length; i++) {
+    if (typeof state.items[i].order !== "number") { need = true; break; }
+  }
+  if (!need) { return; }
+  var groups = {};
+  for (var j = 0; j < state.items.length; j++) {
+    var it = state.items[j];
+    if (!groups[it.date]) { groups[it.date] = []; }
+    groups[it.date].push(it);
+  }
+  for (var key in groups) {
+    var arr = groups[key];
+    arr.sort(function (a, b) { return a.createdAt - b.createdAt; });
+    for (var m = 0; m < arr.length; m++) { arr[m].order = m; }
   }
 }
 
@@ -1012,7 +1109,7 @@ function pendingFor(date) {
     var it = state.items[i];
     if (it.status === "todo" && it.date === date) { out.push(it); }
   }
-  out.sort(function (a, b) { return a.createdAt - b.createdAt; });
+  out.sort(function (a, b) { return orderOf(a) - orderOf(b) || (a.createdAt - b.createdAt); });
   return out;
 }
 
@@ -1173,7 +1270,8 @@ function itemCard(it) {
       + '</div>';
   }
   var rollLabel = (it.date >= t) ? "顺延一天" : "明天继续";
-  return '<div class="item" id="card_' + it.id + '">'
+  return '<div class="item" id="card_' + it.id + '" data-id="' + it.id + '">'
+    + '<span class="grip" title="按住拖动，调整优先级">⠿</span>'
     + '<button class="check" title="完成" onclick="doComplete(\'' + it.id + '\')"></button>'
     + '<div class="itembody">'
     + '<div class="itemtitle">' + esc(it.title) + chips + '</div>'
