@@ -73,6 +73,15 @@ form input:focus, .navbtns input:focus { outline: 2px solid #bfdbfe; border-colo
 .fgroup ul { list-style: none; padding-left: 4px; }
 .fgroup li { font-size: 14px; padding: 5px 0; color: #374151; border-bottom: 1px dashed #eef1f5; }
 .fgroup li:last-child { border-bottom: none; }
+.fnum { color: #2563eb; font-weight: bold; margin-right: 6px; }
+#celebrate { position: fixed; inset: 0; z-index: 120; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,.88); backdrop-filter: blur(2px); overflow: hidden; cursor: pointer; }
+.celebratebox { text-align: center; animation: pop .5s cubic-bezier(.2,1.4,.4,1); padding: 0 20px; }
+.celebratebox .big { font-size: 72px; }
+.celebratebox .msg { font-size: 22px; font-weight: bold; color: #e05297; margin-top: 12px; line-height: 1.6; }
+.celebratebox .sub { font-size: 13px; color: #9aa4b2; margin-top: 10px; }
+@keyframes pop { 0% { transform: scale(.3); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+.confetti { position: absolute; top: -20px; width: 10px; height: 14px; border-radius: 2px; animation: fall linear forwards; }
+@keyframes fall { to { transform: translateY(110vh) rotate(720deg); opacity: .9; } }
 .foot { text-align: center; color: #9aa4b2; font-size: 12px; margin-top: 8px; line-height: 1.8; }
 .overlay { position: fixed; inset: 0; background: rgba(15,23,42,.5); display: flex; align-items: center; justify-content: center; z-index: 50; padding: 20px; }
 .modal { background: #fff; border-radius: 12px; width: 100%; max-width: 720px; max-height: 86vh; display: flex; flex-direction: column; padding: 20px 24px; }
@@ -1238,7 +1247,7 @@ function renderFuture() {
     var tag = (date === addDays(t, 1)) ? "（明天）" : "";
     html += '<div class="fgroup"><div class="fdate">' + date.slice(5) + ' ' + weekCN(date) + tag + ' · ' + arr.length + '项 <button onclick="jumpTo(\'' + date + '\')">查看当天</button></div><ul>';
     for (var k = 0; k < arr.length; k++) {
-      html += '<li>' + esc(arr[k].title) + (arr[k].note ? ' <span class="chip amber">有注意事项</span>' : '') + '</li>';
+      html += '<li><span class="fnum">' + (k + 1) + '.</span>' + esc(arr[k].title) + (arr[k].note ? ' <span class="chip amber">有注意事项</span>' : '') + '</li>';
     }
     html += '</ul></div>';
   }
@@ -1319,8 +1328,48 @@ function doComplete(id) {
     completeItem(state, id);
     saveState();
     render();
-    toast("已完成一项");
+    var t = todayStr();
+    if (pendingFor(t).length === 0 && doneFor(t).length > 0) {
+      showCelebrate();
+    } else {
+      toast(PRAISE[Math.floor(Math.random() * PRAISE.length)]);
+    }
   }, 380);
+}
+
+var PRAISE = [
+  "太棒啦，又完成一项！✨",
+  "好厉害，给你点个大大的赞 👍",
+  "完成！小星星 +1 ⭐",
+  "效率超高，继续加油 💪",
+  "漂亮！离全部完成更近啦 🌈",
+  "干得漂亮，喝口水休息一下吧 🍵"
+];
+
+var BIGPRAISE = [
+  "哇！今天的待办全部完成啦！你简直太棒啦！",
+  "太厉害了！今天的事情全部搞定！奖励自己一下！",
+  "完美收工！今天的你超级棒！"
+];
+
+function showCelebrate() {
+  var old = document.getElementById("celebrate");
+  if (old && old.parentNode) { old.parentNode.removeChild(old); }
+  var div = document.createElement("div");
+  div.id = "celebrate";
+  var msg = BIGPRAISE[Math.floor(Math.random() * BIGPRAISE.length)];
+  var html = '<div class="celebratebox"><div class="big">🎉</div><div class="msg">' + esc(msg) + '🎉</div><div class="sub">点任意处关闭</div></div>';
+  var colors = ["#f472b6", "#facc15", "#4ade80", "#60a5fa", "#fb923c", "#a78bfa"];
+  for (var i = 0; i < 36; i++) {
+    var left = Math.floor(Math.random() * 100);
+    var delay = (Math.random() * 0.8).toFixed(2);
+    var dur = (1.6 + Math.random() * 1.4).toFixed(2);
+    html += '<span class="confetti" style="left:' + left + '%;background:' + colors[i % colors.length] + ';animation-duration:' + dur + 's;animation-delay:' + delay + 's"></span>';
+  }
+  div.innerHTML = html;
+  div.onclick = function () { if (div.parentNode) { div.parentNode.removeChild(div); } };
+  document.body.appendChild(div);
+  setTimeout(function () { if (div.parentNode) { div.parentNode.removeChild(div); } }, 5000);
 }
 
 function doUndo(id) {
