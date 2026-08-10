@@ -128,9 +128,9 @@ form input:focus, .navbtns input:focus { outline: 2px solid #bfdbfe; border-colo
 .ttitle { flex: 1; font-size: 16px; font-weight: bold; cursor: pointer; word-break: break-all; line-height: 1.5; }
 .ttitle:hover { color: #2563eb; }
 .ttitle .chip { margin-left: 6px; font-weight: normal; }
-.tprog { flex: none; width: 120px; }
-.tprog .pbar { margin: 0 0 3px; }
-.tprog .pmeta { font-size: 11px; }
+.tprog { flex: none; width: 130px; }
+.tprog input[type=range] { width: 100%; margin: 0; height: 20px; accent-color: #2563eb; }
+.tprog .pmeta { font-size: 11px; color: #6b7280; }
 .overduehead { margin-top: 10px; font-size: 13px; color: #a06a00; cursor: pointer; user-select: none; }
 .overdueitem { display: flex; align-items: center; gap: 10px; padding: 6px 4px; font-size: 13px; color: #475569; }
 .overdueitem .t { flex: 1; word-break: break-all; }
@@ -148,7 +148,7 @@ form input:focus, .navbtns input:focus { outline: 2px solid #bfdbfe; border-colo
   .formrow { flex-direction: column; align-items: stretch; }
   .formrow label { width: 100%; justify-content: space-between; }
   .slider input[type=range] { flex: 1; }
-  .tprog { width: 64px; }
+  .tprog { width: 96px; }
   .ttitle { font-size: 15px; }
   .edprow { flex-wrap: wrap; }
   .edkids { padding-left: 8px; }
@@ -1165,13 +1165,23 @@ function renderTodayStrip() {
         + '<span class="tnum">' + (i + 1) + '</span>'
         + '<button class="check" title="完成" onclick="doComplete(\'' + it.id + '\')"></button>'
         + '<span class="ttitle" onclick="gotoAndEdit(\'' + it.id + '\')" title="点击编辑">' + esc(it.title) + (it.note ? ' <span class="chip amber">有注意事项</span>' : '') + '</span>'
-        + '<div class="tprog"><div class="pbar"><i style="width:' + it.percent + '%"></i></div><div class="pmeta">' + it.percent + '%</div></div>'
+        + '<div class="tprog"><input type="range" min="0" max="100" step="5" value="' + it.percent + '" title="拖动设置进度" oninput="setPercent(\'' + it.id + '\',this.value,this)" onchange="render()"><div class="pmeta">进度 ' + it.percent + '%</div></div>'
         + '<button onclick="doRoll(\'' + it.id + '\')">移到明天</button>'
         + '</div>';
     }
     box.innerHTML = html;
   }
   renderOverdue();
+}
+
+function setPercent(id, val, el) {
+  var it = findItem(state, id);
+  if (!it) { return; }
+  it.percent = parseInt(val, 10) || 0;
+  it.updatedAt = new Date().getTime();
+  var meta = el && el.parentNode ? el.parentNode.querySelector(".pmeta") : null;
+  if (meta) { meta.textContent = "进度 " + it.percent + "%"; }
+  saveState();
 }
 
 function renderOverdue() {
