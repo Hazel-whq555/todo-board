@@ -34,6 +34,7 @@ button.danger:hover { background: #fdecea; border-color: #e6a49b; }
 .chip.green { background: #e5f5ec; color: #1e7d46; }
 .chip.red { background: #fdecea; color: #c0392b; }
 .chip.amber { background: #fdf3e0; color: #a06a00; }
+.chip.blue { background: #e8f1ff; color: #1d4fd8; }
 .chip.gray { background: #f0f0f2; color: #777; }
 .banner { background: #fff8e6; border: 1px solid #f0dfa8; color: #7a5c00; border-radius: 10px; padding: 10px 16px; margin-bottom: 14px; font-size: 13px; display: flex; justify-content: space-between; align-items: center; gap: 10px; }
 form input[type=text], form input:not([type]) { width: 100%; padding: 9px 12px; border: 1px solid #d0d7de; border-radius: 8px; font-size: 14px; font-family: inherit; margin-bottom: 10px; }
@@ -278,7 +279,7 @@ form input:focus, .navbtns input:focus { outline: 2px solid #bfdbfe; border-colo
 </div>
 <div id="futureEditOverlay" class="overlay" style="display:none;z-index:56" onclick="if(event.target===this)closeFutureEdit()">
   <div class="modal" style="max-width:520px">
-    <h3>编辑计划事项</h3>
+    <h3>编辑事项</h3>
     <div class="syncbody">
       <input id="efTitle" maxlength="100" placeholder="事项内容">
       <div class="formrow">
@@ -288,6 +289,7 @@ form input:focus, .navbtns input:focus { outline: 2px solid #bfdbfe; border-colo
       </div>
       <input id="efProgress" maxlength="200" placeholder="工作进度说明（可选）">
       <input id="efNote" maxlength="200" placeholder="注意事项（可选）">
+      <input id="efHint" maxlength="200" placeholder="工作提示（可选），结转事项会自动生成">
     </div>
     <div class="modalbtns">
       <button class="primary" onclick="saveFutureEdit()">保存</button>
@@ -374,6 +376,7 @@ function newItem(opts, now) {
     percent: (typeof opts.percent === "number") ? opts.percent : 0,
     progress: String(opts.progress || ""),
     note: String(opts.note || ""),
+    hint: String(opts.hint || ""),
     status: "todo",
     createdAt: ts,
     updatedAt: ts,
@@ -445,6 +448,7 @@ function rollTomorrow(state, id, today) {
 // One-click tomorrow plan: move every unfinished item dated today or
 // earlier (today's open work + overdue leftovers) to tomorrow.
 // Done items and future-dated items are left untouched.
+// Each carried item gets an auto-generated work hint.
 function carryUnfinishedToTomorrow(state, today) {
   var tomorrow = addDays(today, 1);
   var moved = [];
@@ -453,11 +457,30 @@ function carryUnfinishedToTomorrow(state, today) {
     if (it.status === "todo" && it.date && it.date <= today) {
       it.date = tomorrow;
       it.rollCount = (it.rollCount || 0) + 1;
+      it.hint = buildCarryHint(it);
       it.updatedAt = new Date().getTime();
       moved.push(it);
     }
   }
   return moved;
+}
+
+var HINT_L = {
+  carry: "\u627f\u63a5\u524d\u65e5\uff0c\u5df2\u5b8c\u6210",
+  goOn: "%\uff0c\u7ee7\u7eed\u63a8\u8fdb",
+  notStart: "\u5c1a\u672a\u5f00\u59cb\uff0c\u4f18\u5148\u5b89\u6392",
+  noteTag: "\u6ce8\u610f\uff1a",
+  progTag: "\u524d\u65e5\u8fdb\u5ea6\uff1a",
+  sep: "\uff1b"
+};
+
+function buildCarryHint(it) {
+  var parts = [];
+  if (it.percent > 0) { parts.push(HINT_L.carry + it.percent + HINT_L.goOn); }
+  else { parts.push(HINT_L.notStart); }
+  if (it.note) { parts.push(HINT_L.noteTag + it.note); }
+  if (it.progress) { parts.push(HINT_L.progTag + it.progress); }
+  return parts.join(HINT_L.sep);
 }
 
 function updateItem(state, id, patch) {
@@ -468,6 +491,7 @@ function updateItem(state, id, patch) {
   if (typeof patch.percent === "number") { it.percent = patch.percent; }
   if (typeof patch.progress === "string") { it.progress = patch.progress; }
   if (typeof patch.note === "string") { it.note = patch.note; }
+  if (typeof patch.hint === "string") { it.hint = patch.hint; }
   it.updatedAt = new Date().getTime();
   return it;
 }
@@ -1188,7 +1212,7 @@ function renderTodayStrip() {
       html += '<div class="trow">'
         + '<span class="tnum">' + (i + 1) + '</span>'
         + '<button class="check" title="完成" onclick="doComplete(\'' + it.id + '\')"></button>'
-        + '<span class="ttitle" onclick="gotoAndEdit(\'' + it.id + '\')" title="点击编辑">' + esc(it.title) + (it.note ? ' <span class="chip amber">有注意事项</span>' : '') + '</span>'
+        + '<span class="ttitle" onclick="editFuture(\'' + it.id + '\')" title="点击写进度/注意事项">' + esc(it.title) + (it.note ? ' <span class="chip amber">有注意事项</span>' : '') + (it.hint ? ' <span class="chip blue">有提示</span>' : '') + '</span>'
         + '<div class="tprog"><input type="range" min="0" max="100" step="5" value="' + it.percent + '" title="拖动设置进度" oninput="setPercent(\'' + it.id + '\',this.value,this)" onchange="render()"><div class="pmeta">进度 ' + it.percent + '%</div></div>'
         + '<button onclick="doRoll(\'' + it.id + '\')">移到明天</button>'
         + '</div>';
@@ -1295,12 +1319,14 @@ function itemCard(it) {
   var chips = "";
   if (it.date && it.date < t) { chips += '<span class="chip red">已逾期</span>'; }
   if (it.note) { chips += '<span class="chip amber">有注意事项</span>'; }
+  if (it.hint) { chips += '<span class="chip blue">有提示</span>'; }
   if (it.rollCount > 0) { chips += '<span class="chip gray">已顺延' + it.rollCount + '次</span>'; }
   var detail = "";
-  if (it.progress || it.note) {
+  if (it.progress || it.note || it.hint) {
     detail = '<div class="detail">'
       + (it.progress ? '<p><b>进度说明：</b>' + esc(it.progress) + '</p>' : '')
       + (it.note ? '<p><b>注意事项：</b>' + esc(it.note) + '</p>' : '')
+      + (it.hint ? '<p><b>工作提示：</b>' + esc(it.hint) + '</p>' : '')
       + '</div>';
   }
   var rollLabel = (it.date && it.date >= t) ? "顺延一天" : "明天继续";
@@ -1330,6 +1356,7 @@ function editCard(it) {
     + '</div>'
     + '<input id="eProgress_' + it.id + '" placeholder="工作进度说明" value="' + esc(it.progress) + '" maxlength="200">'
     + '<input id="eNote_' + it.id + '" placeholder="注意事项" value="' + esc(it.note) + '" maxlength="200">'
+    + '<input id="eHint_' + it.id + '" placeholder="工作提示（可选）" value="' + esc(it.hint || "") + '" maxlength="200">'
     + '<div class="acts"><button class="primary" onclick="saveEdit(\'' + it.id + '\')">保存</button><button onclick="cancelEdit()">取消</button></div>'
     + '</div></div>';
 }
@@ -1417,6 +1444,7 @@ function editFuture(id) {
   $("efPercentOut").textContent = it.percent + "%";
   $("efProgress").value = it.progress;
   $("efNote").value = it.note;
+  $("efHint").value = it.hint || "";
   $("futureEditOverlay").style.display = "flex";
 }
 
@@ -1434,7 +1462,8 @@ function saveFutureEdit() {
     date: $("efTbd").checked ? "" : $("efDate").value,
     percent: parseInt($("efPercent").value, 10) || 0,
     progress: trimStr($("efProgress").value),
-    note: trimStr($("efNote").value)
+    note: trimStr($("efNote").value),
+    hint: trimStr($("efHint").value)
   });
   saveState();
   closeFutureEdit();
@@ -1608,7 +1637,8 @@ function saveEdit(id) {
     date: dateVal,
     percent: parseInt($("ePercent_" + id).value, 10) || 0,
     progress: $("eProgress_" + id).value.replace(/^\s+|\s+$/g, ""),
-    note: $("eNote_" + id).value.replace(/^\s+|\s+$/g, "")
+    note: $("eNote_" + id).value.replace(/^\s+|\s+$/g, ""),
+    hint: $("eHint_" + id).value.replace(/^\s+|\s+$/g, "")
   });
   editingId = null;
   saveState();
