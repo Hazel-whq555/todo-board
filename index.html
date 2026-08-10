@@ -74,8 +74,12 @@ form input:focus, .navbtns input:focus { outline: 2px solid #bfdbfe; border-colo
 .fdate { font-size: 13px; font-weight: bold; color: #1f3a5f; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; }
 .fdate button { font-size: 12px; padding: 2px 10px; }
 .fgroup ul { list-style: none; padding-left: 4px; }
-.fgroup li { font-size: 14px; padding: 5px 0; color: #374151; border-bottom: 1px dashed #eef1f5; }
+.fgroup li { font-size: 14px; padding: 5px 0; color: #374151; border-bottom: 1px dashed #eef1f5; display: flex; align-items: center; gap: 4px; }
 .fgroup li:last-child { border-bottom: none; }
+.ftitle { flex: 1; min-width: 0; word-break: break-all; }
+.fedit { flex: none; font-size: 12px; padding: 2px 10px; }
+.tbdlab { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: #475569; }
+.tbdlab input { width: auto !important; margin: 0 !important; }
 .fnum { color: #2563eb; font-weight: bold; margin-right: 6px; }
 #celebrate { position: fixed; inset: 0; z-index: 120; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,.88); backdrop-filter: blur(2px); overflow: hidden; cursor: pointer; }
 .celebratebox { text-align: center; animation: pop .5s cubic-bezier(.2,1.4,.4,1); padding: 0 20px; }
@@ -208,6 +212,7 @@ form input:focus, .navbtns input:focus { outline: 2px solid #bfdbfe; border-colo
       <input id="fTitle" maxlength="100" placeholder="事项内容（必填），例如：跟进客户合同、整理项目申报材料">
       <div class="formrow">
         <label>日期 <input type="date" id="fDate" onchange="updateFutureHint()"></label>
+        <label class="tbdlab"><input type="checkbox" id="fTbd" onchange="var d=document.getElementById('fDate');d.disabled=this.checked;updateFutureHint()">待定</label>
         <label class="slider">进度
           <input type="range" id="fPercent" min="0" max="100" step="5" value="0" oninput="document.getElementById('fPercentOut').textContent=this.value+'%'">
           <span id="fPercentOut">0%</span>
@@ -269,6 +274,25 @@ form input:focus, .navbtns input:focus { outline: 2px solid #bfdbfe; border-colo
     <h3 id="syncTitle"></h3>
     <div id="syncBody" class="syncbody"></div>
     <div class="modalbtns"><button onclick="closeSync()">关闭</button></div>
+  </div>
+</div>
+<div id="futureEditOverlay" class="overlay" style="display:none;z-index:56" onclick="if(event.target===this)closeFutureEdit()">
+  <div class="modal" style="max-width:520px">
+    <h3>编辑计划事项</h3>
+    <div class="syncbody">
+      <input id="efTitle" maxlength="100" placeholder="事项内容">
+      <div class="formrow">
+        <label>日期 <input type="date" id="efDate"></label>
+        <label class="tbdlab"><input type="checkbox" id="efTbd" onchange="efTbdToggle()">待定</label>
+        <label class="slider">进度 <input type="range" id="efPercent" min="0" max="100" step="5" value="0" oninput="document.getElementById('efPercentOut').textContent=this.value+'%'"><span id="efPercentOut">0%</span></label>
+      </div>
+      <input id="efProgress" maxlength="200" placeholder="工作进度说明（可选）">
+      <input id="efNote" maxlength="200" placeholder="注意事项（可选）">
+    </div>
+    <div class="modalbtns">
+      <button class="primary" onclick="saveFutureEdit()">保存</button>
+      <button onclick="closeFutureEdit()">取消</button>
+    </div>
   </div>
 </div>
 <div id="toast"></div>
@@ -345,7 +369,7 @@ function newItem(opts, now) {
   var ts = now || new Date().getTime();
   return {
     id: "t" + ts + "r" + Math.floor(Math.random() * 100000),
-    date: opts.date,
+    date: opts.date ? opts.date : null,
     title: String(opts.title || ""),
     percent: (typeof opts.percent === "number") ? opts.percent : 0,
     progress: String(opts.progress || ""),
@@ -409,7 +433,7 @@ function undoItem(state, id) {
 function rollTomorrow(state, id, today) {
   var it = findItem(state, id);
   if (!it) { return null; }
-  var base = (it.date > today) ? it.date : today;
+  var base = (it.date && it.date > today) ? it.date : today;
   it.date = addDays(base, 1);
   it.status = "todo";
   it.doneAt = null;
@@ -426,7 +450,7 @@ function carryUnfinishedToTomorrow(state, today) {
   var moved = [];
   for (var i = 0; i < state.items.length; i++) {
     var it = state.items[i];
-    if (it.status === "todo" && it.date <= today) {
+    if (it.status === "todo" && it.date && it.date <= today) {
       it.date = tomorrow;
       it.rollCount = (it.rollCount || 0) + 1;
       it.updatedAt = new Date().getTime();
@@ -440,7 +464,7 @@ function updateItem(state, id, patch) {
   var it = findItem(state, id);
   if (!it) { return null; }
   if (typeof patch.title === "string") { it.title = patch.title; }
-  if (typeof patch.date === "string" && patch.date !== "") { it.date = patch.date; }
+  if (typeof patch.date === "string") { it.date = patch.date === "" ? null : patch.date; }
   if (typeof patch.percent === "number") { it.percent = patch.percent; }
   if (typeof patch.progress === "string") { it.progress = patch.progress; }
   if (typeof patch.note === "string") { it.note = patch.note; }
@@ -456,7 +480,7 @@ function deleteItem(state, id) {
 }
 
 // ---------- queries ----------
-function cmpDate(a, b) { return a < b ? -1 : (a > b ? 1 : 0); }
+function cmpDate(a, b) { var x = a || "", y = b || ""; return x < y ? -1 : (x > y ? 1 : 0); }
 
 // Items completed (by doneAt date) inside [start, end], oldest first.
 function doneInRange(state, start, end) {
@@ -477,7 +501,7 @@ function openScheduled(state, upTo) {
   var out = [];
   for (var i = 0; i < state.items.length; i++) {
     var it = state.items[i];
-    if (it.status === "todo" && it.date <= upTo) { out.push(it); }
+    if (it.status === "todo" && (!it.date || it.date <= upTo)) { out.push(it); }
   }
   out.sort(function (a, b) { return cmpDate(a.date, b.date) || (a.createdAt - b.createdAt); });
   return out;
@@ -488,7 +512,7 @@ function scheduledInRange(state, start, end) {
   var out = [];
   for (var i = 0; i < state.items.length; i++) {
     var it = state.items[i];
-    if (it.status === "todo" && it.date >= start && it.date <= end) { out.push(it); }
+    if (it.status === "todo" && it.date && it.date >= start && it.date <= end) { out.push(it); }
   }
   out.sort(function (a, b) { return cmpDate(a.date, b.date) || (a.createdAt - b.createdAt); });
   return out;
@@ -1216,7 +1240,7 @@ function pullToToday(id) {
 function gotoAndEdit(id) {
   var it = findItem(state, id);
   if (!it) { return; }
-  viewDate = it.date;
+  if (it.date) { viewDate = it.date; }
   editingId = id;
   render();
   var card = document.getElementById("card_" + id);
@@ -1231,7 +1255,7 @@ function genTomorrow() {
   var overdueCnt = 0;
   for (var i = 0; i < state.items.length; i++) {
     var it = state.items[i];
-    if (it.status === "todo" && it.date <= t) {
+    if (it.status === "todo" && it.date && it.date <= t) {
       if (it.date === t) { todayCnt++; } else { overdueCnt++; }
     }
   }
@@ -1269,7 +1293,7 @@ function itemCard(it) {
   if (editingId === it.id) { return editCard(it); }
   var t = todayStr();
   var chips = "";
-  if (it.date < t) { chips += '<span class="chip red">已逾期</span>'; }
+  if (it.date && it.date < t) { chips += '<span class="chip red">已逾期</span>'; }
   if (it.note) { chips += '<span class="chip amber">有注意事项</span>'; }
   if (it.rollCount > 0) { chips += '<span class="chip gray">已顺延' + it.rollCount + '次</span>'; }
   var detail = "";
@@ -1279,7 +1303,7 @@ function itemCard(it) {
       + (it.note ? '<p><b>注意事项：</b>' + esc(it.note) + '</p>' : '')
       + '</div>';
   }
-  var rollLabel = (it.date >= t) ? "顺延一天" : "明天继续";
+  var rollLabel = (it.date && it.date >= t) ? "顺延一天" : "明天继续";
   return '<div class="item" id="card_' + it.id + '" data-id="' + it.id + '">'
     + '<span class="grip" title="按住拖动，调整优先级">⠿</span>'
     + '<button class="check" title="完成" onclick="doComplete(\'' + it.id + '\')"></button>'
@@ -1300,7 +1324,8 @@ function editCard(it) {
   return '<div class="item"><div class="itembody editbox">'
     + '<input id="eTitle_' + it.id + '" value="' + esc(it.title) + '" maxlength="100">'
     + '<div class="formrow">'
-    + '<label>日期 <input type="date" id="eDate_' + it.id + '" value="' + it.date + '"></label>'
+    + '<label>日期 <input type="date" id="eDate_' + it.id + '" value="' + (it.date || "") + '"' + (it.date ? "" : " disabled") + '></label>'
+    + '<label class="tbdlab"><input type="checkbox" id="eTbd_' + it.id + '"' + (it.date ? "" : " checked") + ' onchange="var d=document.getElementById(\'eDate_' + it.id + '\');d.disabled=this.checked;if(this.checked){d.value=\'\';}">待定</label>'
     + '<label class="slider">进度 <input type="range" id="ePercent_' + it.id + '" min="0" max="100" step="5" value="' + it.percent + '" oninput="document.getElementById(\'ePercentOut_' + it.id + '\').textContent=this.value+\'%\'"><span id="ePercentOut_' + it.id + '">' + it.percent + '%</span></label>'
     + '</div>'
     + '<input id="eProgress_' + it.id + '" placeholder="工作进度说明" value="' + esc(it.progress) + '" maxlength="200">'
@@ -1336,10 +1361,22 @@ function renderDone(done) {
 function renderFuture() {
   var t = todayStr();
   var list = scheduledInRange(state, addDays(t, 1), "9999-12-31");
+  var tbd = [];
+  for (var n = 0; n < state.items.length; n++) {
+    var ti = state.items[n];
+    if (ti.status === "todo" && !ti.date) { tbd.push(ti); }
+  }
+  tbd.sort(function (a, b) { return a.createdAt - b.createdAt; });
   var box = $("futureList");
-  if (list.length === 0) {
-    box.innerHTML = '<p class="empty">暂无未来计划。添加待办时可以选择未来的日期，提前安排工作。</p>';
+  if (list.length === 0 && tbd.length === 0) {
+    box.innerHTML = '<p class="empty">暂无未来计划。添加待办时可以选择未来日期，或勾选「待定」先记下来再定日期。</p>';
     return;
+  }
+  var html = "";
+  if (tbd.length > 0) {
+    html += '<div class="fgroup"><div class="fdate">待定 · 日期不确定 · ' + tbd.length + '项</div><ul>';
+    for (var b = 0; b < tbd.length; b++) { html += futureRow(tbd[b], b + 1, true); }
+    html += '</ul></div>';
   }
   var groups = {};
   var order = [];
@@ -1348,18 +1385,66 @@ function renderFuture() {
     if (!groups[d]) { groups[d] = []; order.push(d); }
     groups[d].push(list[i]);
   }
-  var html = "";
   for (var g = 0; g < order.length; g++) {
     var date = order[g];
     var arr = groups[date];
     var tag = (date === addDays(t, 1)) ? "（明天）" : "";
     html += '<div class="fgroup"><div class="fdate">' + date.slice(5) + ' ' + weekCN(date) + tag + ' · ' + arr.length + '项 <button onclick="jumpTo(\'' + date + '\')">查看当天</button></div><ul>';
-    for (var k = 0; k < arr.length; k++) {
-      html += '<li><span class="fnum">' + (k + 1) + '.</span>' + esc(arr[k].title) + (arr[k].note ? ' <span class="chip amber">有注意事项</span>' : '') + '</li>';
-    }
+    for (var k = 0; k < arr.length; k++) { html += futureRow(arr[k], k + 1, false); }
     html += '</ul></div>';
   }
   box.innerHTML = html;
+}
+
+function futureRow(it, num, isTbd) {
+  return '<li><span class="fnum">' + num + '.</span><span class="ftitle">' + esc(it.title)
+    + (isTbd ? ' <span class="chip gray">待定</span>' : '')
+    + (it.note ? ' <span class="chip amber">有注意事项</span>' : '')
+    + '</span><button class="fedit" onclick="editFuture(\'' + it.id + '\')">编辑</button></li>';
+}
+
+var editingFutureId = null;
+
+function editFuture(id) {
+  var it = findItem(state, id);
+  if (!it) { return; }
+  editingFutureId = id;
+  $("efTitle").value = it.title;
+  $("efDate").value = it.date || "";
+  $("efDate").disabled = !it.date;
+  $("efTbd").checked = !it.date;
+  $("efPercent").value = it.percent;
+  $("efPercentOut").textContent = it.percent + "%";
+  $("efProgress").value = it.progress;
+  $("efNote").value = it.note;
+  $("futureEditOverlay").style.display = "flex";
+}
+
+function efTbdToggle() {
+  var d = $("efDate");
+  d.disabled = $("efTbd").checked;
+  if ($("efTbd").checked) { d.value = ""; }
+}
+
+function saveFutureEdit() {
+  var it = findItem(state, editingFutureId);
+  if (!it) { closeFutureEdit(); return; }
+  updateItem(state, it.id, {
+    title: trimStr($("efTitle").value) || it.title,
+    date: $("efTbd").checked ? "" : $("efDate").value,
+    percent: parseInt($("efPercent").value, 10) || 0,
+    progress: trimStr($("efProgress").value),
+    note: trimStr($("efNote").value)
+  });
+  saveState();
+  closeFutureEdit();
+  render();
+  toast("已保存修改");
+}
+
+function closeFutureEdit() {
+  editingFutureId = null;
+  $("futureEditOverlay").style.display = "none";
 }
 
 function reminderInfo() {
@@ -1398,7 +1483,8 @@ function addFromForm(ev) {
   ev.preventDefault();
   var title = $("fTitle").value.replace(/^\s+|\s+$/g, "");
   if (!title) { toast("请先填写事项内容"); $("fTitle").focus(); return false; }
-  var date = $("fDate").value || todayStr();
+  var tbd = $("fTbd").checked;
+  var date = tbd ? null : ($("fDate").value || todayStr());
   addItem(state, {
     title: title,
     date: date,
@@ -1412,7 +1498,11 @@ function addFromForm(ev) {
   $("fNote").value = "";
   $("fPercent").value = 0;
   $("fPercentOut").textContent = "0%";
-  if (date > todayStr()) {
+  $("fTbd").checked = false;
+  $("fDate").disabled = false;
+  if (!date) {
+    toast("已加入待定清单，日期可随时再定");
+  } else if (date > todayStr()) {
     toast("已加入未来计划（" + date + " " + weekCN(date) + "）");
   } else if (date !== viewDate) {
     toast("已添加到 " + date);
@@ -1425,8 +1515,11 @@ function addFromForm(ev) {
 }
 
 function updateFutureHint() {
+  var tbd = $("fTbd").checked;
   var d = $("fDate").value;
-  $("futureHint").textContent = (d && d > todayStr()) ? "这是未来日期的事项，将先显示在下方「未来计划」，到当天自动进入看板。" : "";
+  $("futureHint").textContent = tbd
+    ? "待定事项不指定日期，会列在「未来计划」的待定区，可随时编辑确定日期。"
+    : ((d && d > todayStr()) ? "这是未来日期的事项，将先显示在下方「未来计划」，到当天自动进入看板。" : "");
 }
 
 function doComplete(id) {
@@ -1508,10 +1601,11 @@ function cancelEdit() { editingId = null; render(); }
 
 function saveEdit(id) {
   var old = findItem(state, id);
-  var dateVal = $("eDate_" + id).value;
+  var tbd = $("eTbd_" + id) && $("eTbd_" + id).checked;
+  var dateVal = tbd ? "" : $("eDate_" + id).value;
   updateItem(state, id, {
     title: $("eTitle_" + id).value.replace(/^\s+|\s+$/g, "") || (old ? old.title : ""),
-    date: dateVal || (old ? old.date : todayStr()),
+    date: dateVal,
     percent: parseInt($("ePercent_" + id).value, 10) || 0,
     progress: $("eProgress_" + id).value.replace(/^\s+|\s+$/g, ""),
     note: $("eNote_" + id).value.replace(/^\s+|\s+$/g, "")
