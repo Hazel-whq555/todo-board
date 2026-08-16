@@ -69,6 +69,7 @@ form input:focus, .navbtns input:focus { outline: 2px solid #bfdbfe; border-colo
 .doneitem:last-child { border-bottom: none; }
 .doneitem .t { text-decoration: line-through; color: #8a94a3; flex: 1; word-break: break-all; }
 .doneitem .time { color: #9aa4b2; font-size: 12px; margin-left: 8px; flex: none; }
+.mdtitle { flex: 1; min-width: 0; word-break: break-all; color: #374151; font-size: 14px; }
 .collapsible { cursor: pointer; user-select: none; }
 .caret { font-size: 11px; color: #9aa4b2; margin-left: 6px; }
 .fgroup { margin-bottom: 12px; }
@@ -239,11 +240,16 @@ form input:focus, .navbtns input:focus { outline: 2px solid #bfdbfe; border-colo
   </section>
 
   <section class="card">
+    <h2 class="collapsible" id="monthDoneHead" onclick="toggleMonthDone()"></h2>
+    <div id="monthDoneList"></div>
+  </section>
+
+  <section class="card">
     <h2>未来计划</h2>
     <div id="futureList"></div>
   </section>
 
-  <p class="foot">数据保存在本机浏览器中（localStorage），请固定使用同一个浏览器打开本页面，并定期点「备份数据」导出存档。<br>双击桌面上的本文件即可使用。</p>
+  <p class="foot">数据加密后保存在你的 GitHub 私有仓库，电脑和手机打开同一网址即可同步；也可点「备份数据」导出本地存档。</p>
 </div>
 
 <div id="overlay" class="overlay" style="display:none" onclick="if(event.target===this)closeModal()">
@@ -260,7 +266,7 @@ form input:focus, .navbtns input:focus { outline: 2px solid #bfdbfe; border-colo
 <div id="editorOverlay" class="overlay" style="display:none;z-index:55" onclick="if(event.target===this)closeEditor()">
   <div class="modal editormodal">
     <h3 id="editorTitle"></h3>
-    <p class="editorhint">报告分三段：先按本期任务自动带出草稿，可自由改写。每段内容可拆成若干「大点」，大点下可再添加「小点」；编辑完成后点「预览并复制」即可使用。</p>
+    <p class="editorhint">报告分三段：先按本期任务自动带出草稿，可自由改写。每段内容可拆成若干「大点」，大点下可再添加「小点」；用 ↑↓ 调整大点顺序；编辑完成后点「预览并复制」即可使用。</p>
     <div id="editorBody" class="editorbody"></div>
     <div class="modalbtns">
       <button class="primary" onclick="saveEditor()">保存</button>
@@ -1182,10 +1188,45 @@ function render() {
   renderTodayStrip();
   renderPending(pend);
   renderDone(done);
+  renderMonthDone();
   renderFuture();
   renderReminder();
   updateFutureHint();
 }
+
+// ---------- 本月已完成 ----------
+var monthDoneOpen = true;
+
+function renderMonthDone() {
+  var mr = monthRange(viewDate);
+  var list = [];
+  for (var i = 0; i < state.items.length; i++) {
+    var it = state.items[i];
+    if (it.status === "done" && it.doneAt) {
+      var ds = fmtDate(new Date(it.doneAt));
+      if (ds >= mr[0] && ds <= mr[1]) { list.push(it); }
+    }
+  }
+  list.sort(function (a, b) { return b.doneAt - a.doneAt; });
+  var ym = viewDate.slice(0, 4) + "年" + parseInt(viewDate.slice(5, 7), 10) + "月";
+  $("monthDoneHead").innerHTML = ym + " 已完成（" + list.length + "）<span class='caret'>" + (monthDoneOpen ? "▲" : "▼") + "</span>";
+  var box = $("monthDoneList");
+  box.style.display = monthDoneOpen ? "block" : "none";
+  if (!monthDoneOpen) { return; }
+  if (list.length === 0) {
+    box.innerHTML = '<p class="empty">这个月还没有完成的事项，加油！</p>';
+    return;
+  }
+  var html = "";
+  for (var k = 0; k < list.length; k++) {
+    var it = list[k];
+    var ds = fmtDate(new Date(it.doneAt));
+    html += '<div class="doneitem"><span class="time">' + ds.slice(5) + " " + weekCN(ds) + '</span><span class="mdtitle">' + esc(it.title) + '</span></div>';
+  }
+  box.innerHTML = html;
+}
+
+function toggleMonthDone() { monthDoneOpen = !monthDoneOpen; render(); }
 
 // ---------- 今日待办醒目面板 ----------
 var overdueOpen = false;
@@ -1675,6 +1716,8 @@ function renderEditor() {
       html += '<div class="edpoint"><div class="edprow">'
         + '<span class="ednum">（' + (i + 1) + '）</span>'
         + '<input class="edtitle" value="' + esc(p.title) + '" placeholder="大点标题" oninput="edInput(' + s + ',' + i + ',-1,this.value)">'
+        + '<button title="上移" onclick="movePoint(' + s + ',' + i + ',-1)">↑</button>'
+        + '<button title="下移" onclick="movePoint(' + s + ',' + i + ',1)">↓</button>'
         + '<button onclick="editorAddChild(' + s + ',' + i + ')">＋小点</button>'
         + '<button class="danger" onclick="editorDelBig(' + s + ',' + i + ')">删除</button>'
         + '</div><div class="edkids">';
@@ -1703,6 +1746,16 @@ function editorAddBig(s) {
 function editorDelBig(s, i) {
   if (!confirm("删除这个大点及其全部小点？")) { return; }
   currentEdit.outline.sections[s].points.splice(i, 1);
+  renderEditor();
+}
+
+function movePoint(s, i, dir) {
+  var pts = currentEdit.outline.sections[s].points;
+  var j = i + dir;
+  if (j < 0 || j >= pts.length) { return; }
+  var tmp = pts[i];
+  pts[i] = pts[j];
+  pts[j] = tmp;
   renderEditor();
 }
 
