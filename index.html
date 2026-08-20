@@ -86,8 +86,21 @@ form input:focus, .navbtns input:focus { outline: 2px solid #bfdbfe; border-colo
 #celebrate { position: fixed; inset: 0; z-index: 120; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,.88); backdrop-filter: blur(2px); overflow: hidden; cursor: pointer; }
 .celebratebox { text-align: center; animation: pop .5s cubic-bezier(.2,1.4,.4,1); padding: 0 20px; }
 .celebratebox .big { font-size: 72px; }
+.celebratebox .big.bounce { animation: bounce 1s ease-in-out infinite; }
+@keyframes bounce { 0%,100% { transform: translateY(0) scale(1); } 50% { transform: translateY(-20px) scale(1.08); } }
 .celebratebox .msg { font-size: 22px; font-weight: bold; color: #e05297; margin-top: 12px; line-height: 1.6; }
-.celebratebox .sub { font-size: 13px; color: #9aa4b2; margin-top: 10px; }
+.celebratebox .msg.rainbow { background: linear-gradient(90deg,#ff6b6b,#f7b731,#26de81,#4b7bec,#a55eea); -webkit-background-clip: text; background-clip: text; color: transparent; animation: hueshift 3s linear infinite; }
+@keyframes hueshift { to { filter: hue-rotate(360deg); } }
+.celebratebox .sub { font-size: 14px; color: #6b7280; margin-top: 10px; }
+.celebratebox .sub2 { font-size: 12px; color: #9aa4b2; margin-top: 6px; }
+.floatemo { position: absolute; bottom: -40px; font-size: 26px; animation: floatup 2.6s ease-in forwards; }
+@keyframes floatup { to { transform: translateY(-115vh) rotate(40deg); opacity: .95; } }
+.starcard { padding: 14px 20px; }
+.starline { display: flex; gap: 12px; align-items: center; }
+.starbig { font-size: 40px; animation: bounce 2.2s ease-in-out infinite; }
+.starinfo b { font-size: 15px; color: #1f3a5f; }
+.stardetail { display: block; font-size: 12px; color: #6b7280; margin-top: 3px; }
+.starcard .pbar { margin: 10px 0 4px; }
 @keyframes pop { 0% { transform: scale(.3); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
 .confetti { position: absolute; top: -20px; width: 10px; height: 14px; border-radius: 2px; animation: fall linear forwards; }
 @keyframes fall { to { transform: translateY(110vh) rotate(720deg); opacity: .9; } }
@@ -193,6 +206,10 @@ form input:focus, .navbtns input:focus { outline: 2px solid #bfdbfe; border-colo
     </div>
     <div id="todayList"></div>
     <div id="overdueArea"></div>
+  </section>
+
+  <section class="card starcard">
+    <div id="starBox"></div>
   </section>
 
   <section class="card nav">
@@ -487,6 +504,34 @@ function buildCarryHint(it) {
   if (it.note) { parts.push(HINT_L.noteTag + it.note); }
   if (it.progress) { parts.push(HINT_L.progTag + it.progress); }
   return parts.join(HINT_L.sep);
+}
+
+// ---------- incentive: stars & badges ----------
+function countDone(state) {
+  var n = 0;
+  for (var i = 0; i < state.items.length; i++) {
+    if (state.items[i].status === "done") { n++; }
+  }
+  return n;
+}
+
+var BADGES = [
+  { n: 1, t: "\u8d77\u6b65\u4e4b\u661f", e: "\ud83c\udf31" },
+  { n: 5, t: "\u5e72\u52b2\u6ee1\u6ee1", e: "\ud83d\udcaa" },
+  { n: 10, t: "\u5c0f\u80fd\u624b", e: "\ud83c\udfc5" },
+  { n: 20, t: "\u6548\u7387\u4e4b\u661f", e: "\u26a1" },
+  { n: 50, t: "\u8d85\u7ea7\u8fbe\u4eba", e: "\ud83c\udf1f" },
+  { n: 100, t: "\u4f20\u5947\u9009\u624b", e: "\ud83c\udfc6" }
+];
+
+function badgeFor(count) {
+  var cur = null;
+  var next = null;
+  for (var i = 0; i < BADGES.length; i++) {
+    if (count >= BADGES[i].n) { cur = BADGES[i]; }
+    if (count < BADGES[i].n && !next) { next = BADGES[i]; }
+  }
+  return { current: cur, next: next };
 }
 
 function updateItem(state, id, patch) {
@@ -1186,6 +1231,7 @@ function render() {
   var done = doneFor(viewDate);
   $("statChips").innerHTML = '<span class="chip">待办 ' + pend.length + '</span><span class="chip green">已完成 ' + done.length + '</span>';
   renderTodayStrip();
+  renderStars();
   renderPending(pend);
   renderDone(done);
   renderMonthDone();
@@ -1227,6 +1273,37 @@ function renderMonthDone() {
 }
 
 function toggleMonthDone() { monthDoneOpen = !monthDoneOpen; render(); }
+
+// ---------- 星星激励 ----------
+function renderStars() {
+  var total = 0;
+  var weekCnt = 0;
+  var todayCnt = 0;
+  var t = todayStr();
+  var wr = weekRange(t);
+  for (var i = 0; i < state.items.length; i++) {
+    var it = state.items[i];
+    if (it.status === "done" && it.doneAt) {
+      total++;
+      var ds = fmtDate(new Date(it.doneAt));
+      if (ds >= wr[0] && ds <= wr[1]) { weekCnt++; }
+      if (ds === t) { todayCnt++; }
+    }
+  }
+  var b = badgeFor(total);
+  var html = '<div class="starline"><span class="starbig">' + (b.current ? b.current.e : "🌱") + '</span>'
+    + '<div class="starinfo"><b>已收集 ' + total + ' 颗小星星 ⭐</b>'
+    + '<span class="stardetail">今天 ' + todayCnt + ' · 本周 ' + weekCnt + ' · 当前称号：' + (b.current ? b.current.t + " " + b.current.e : "还没起步 🌱") + '</span></div></div>';
+  if (b.next) {
+    var prevN = b.current ? b.current.n : 0;
+    var pct = Math.max(4, Math.round((total - prevN) * 100 / (b.next.n - prevN)));
+    html += '<div class="pbar"><i style="width:' + pct + '%"></i></div>'
+      + '<div class="pmeta">再完成 ' + (b.next.n - total) + ' 项，解锁「' + b.next.t + " " + b.next.e + '」</div>';
+  } else {
+    html += '<div class="pmeta">全部称号已解锁，你就是传奇！🏆</div>';
+  }
+  $("starBox").innerHTML = html;
+}
 
 // ---------- 今日待办醒目面板 ----------
 var overdueOpen = false;
@@ -1468,7 +1545,8 @@ function futureRow(it, num, isTbd) {
   return '<li><span class="fnum">' + num + '.</span><span class="ftitle">' + esc(it.title)
     + (isTbd ? ' <span class="chip gray">待定</span>' : '')
     + (it.note ? ' <span class="chip amber">有注意事项</span>' : '')
-    + '</span><button class="fedit" onclick="editFuture(\'' + it.id + '\')">编辑</button></li>';
+    + '</span><button class="fedit" onclick="editFuture(\'' + it.id + '\')">编辑</button>'
+    + '<button class="fedit danger" onclick="doDelete(\'' + it.id + '\')">取消</button></li>';
 }
 
 var editingFutureId = null;
@@ -1600,10 +1678,13 @@ function doComplete(id) {
     saveState();
     render();
     var t = todayStr();
+    var total = countDone(state);
+    var b = badgeFor(total);
+    var unlocked = (b.current && b.current.n === total) ? b.current : null;
     if (pendingFor(t).length === 0 && doneFor(t).length > 0) {
-      showCelebrate();
+      showCelebrate(total, unlocked);
     } else {
-      toast(PRAISE[Math.floor(Math.random() * PRAISE.length)]);
+      toast("+1 ⭐ " + PRAISE[Math.floor(Math.random() * PRAISE.length)]);
     }
   }, 380);
 }
@@ -1623,24 +1704,38 @@ var BIGPRAISE = [
   "完美收工！今天的你超级棒！"
 ];
 
-function showCelebrate() {
+function showCelebrate(total, unlocked) {
   var old = document.getElementById("celebrate");
   if (old && old.parentNode) { old.parentNode.removeChild(old); }
   var div = document.createElement("div");
   div.id = "celebrate";
   var msg = BIGPRAISE[Math.floor(Math.random() * BIGPRAISE.length)];
-  var html = '<div class="celebratebox"><div class="big">🎉</div><div class="msg">' + esc(msg) + '🎉</div><div class="sub">点任意处关闭</div></div>';
+  var bigs = ["🥳", "🎊", "✨", "💖", "🏆"];
+  var big = bigs[Math.floor(Math.random() * bigs.length)];
+  var html = '<div class="celebratebox">'
+    + '<div class="big bounce">' + big + '</div>'
+    + '<div class="msg rainbow">' + esc(msg) + '</div>'
+    + '<div class="sub">已收集 ' + total + ' 颗小星星 ⭐'
+    + (unlocked ? ' · 解锁新称号「' + unlocked.t + ' ' + unlocked.e + '」' : '')
+    + '</div>'
+    + '<div class="sub2">点任意处关闭</div></div>';
   var colors = ["#f472b6", "#facc15", "#4ade80", "#60a5fa", "#fb923c", "#a78bfa"];
-  for (var i = 0; i < 36; i++) {
+  for (var i = 0; i < 60; i++) {
     var left = Math.floor(Math.random() * 100);
     var delay = (Math.random() * 0.8).toFixed(2);
     var dur = (1.6 + Math.random() * 1.4).toFixed(2);
     html += '<span class="confetti" style="left:' + left + '%;background:' + colors[i % colors.length] + ';animation-duration:' + dur + 's;animation-delay:' + delay + 's"></span>';
   }
+  var emos = ["⭐", "💖", "🎈", "👏", "✨", "🌸"];
+  for (var k = 0; k < 12; k++) {
+    var el = Math.floor(Math.random() * 100);
+    var ed = (Math.random() * 1.2).toFixed(2);
+    html += '<span class="floatemo" style="left:' + el + '%;animation-delay:' + ed + 's">' + emos[k % emos.length] + '</span>';
+  }
   div.innerHTML = html;
   div.onclick = function () { if (div.parentNode) { div.parentNode.removeChild(div); } };
   document.body.appendChild(div);
-  setTimeout(function () { if (div.parentNode) { div.parentNode.removeChild(div); } }, 5000);
+  setTimeout(function () { if (div.parentNode) { div.parentNode.removeChild(div); } }, 6000);
 }
 
 function doUndo(id) {
