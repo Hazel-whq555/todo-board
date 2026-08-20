@@ -1695,13 +1695,18 @@ var PRAISE = [
   "完成！小星星 +1 ⭐",
   "效率超高，继续加油 💪",
   "漂亮！离全部完成更近啦 🌈",
-  "干得漂亮，喝口水休息一下吧 🍵"
+  "干得漂亮，喝口水休息一下吧 🍵",
+  "小兔子蹦蹦跳跳为你欢呼！\ud83d\udc30",
+  "小熊给你一个大大的拥抱！\ud83d\udc3b",
+  "小狐狸说你今天超厉害！\ud83e\udd8a",
+  "小企鹅为你鼓掌！\ud83d\udc27"
 ];
 
 var BIGPRAISE = [
   "哇！今天的待办全部完成啦！你简直太棒啦！",
   "太厉害了！今天的事情全部搞定！奖励自己一下！",
-  "完美收工！今天的你超级棒！"
+  "完美收工！今天的你超级棒！",
+  "小动物们都跑来为你庆祝啦！"
 ];
 
 function showCelebrate(total, unlocked) {
@@ -1710,7 +1715,7 @@ function showCelebrate(total, unlocked) {
   var div = document.createElement("div");
   div.id = "celebrate";
   var msg = BIGPRAISE[Math.floor(Math.random() * BIGPRAISE.length)];
-  var bigs = ["🥳", "🎊", "✨", "💖", "🏆"];
+  var bigs = ["\ud83d\udc30", "\ud83d\udc3b", "\ud83e\udd8a", "\ud83d\udc3c", "\ud83d\udc28"];
   var big = bigs[Math.floor(Math.random() * bigs.length)];
   var html = '<div class="celebratebox">'
     + '<div class="big bounce">' + big + '</div>'
@@ -1726,7 +1731,7 @@ function showCelebrate(total, unlocked) {
     var dur = (1.6 + Math.random() * 1.4).toFixed(2);
     html += '<span class="confetti" style="left:' + left + '%;background:' + colors[i % colors.length] + ';animation-duration:' + dur + 's;animation-delay:' + delay + 's"></span>';
   }
-  var emos = ["⭐", "💖", "🎈", "👏", "✨", "🌸"];
+  var emos = ["\ud83d\udc30", "\ud83d\udc31", "\ud83d\udc36", "\ud83d\udc3b", "\ud83d\udc3e", "\ud83d\udc27"];
   for (var k = 0; k < 12; k++) {
     var el = Math.floor(Math.random() * 100);
     var ed = (Math.random() * 1.2).toFixed(2);
