@@ -1794,10 +1794,11 @@ function genWeekly() { openEditor("weekly"); }
 function genMonthly() { openEditor("monthly"); }
 
 function openEditor(kind) {
-  var key = (kind === "weekly") ? weeklyKey(viewDate) : monthlyKey(viewDate);
-  var outline = getReport(state, key, viewDate, kind);
-  if (kind === "weekly") { state.meta.lastWeekly = mondayOf(viewDate); }
-  else { state.meta.lastMonthly = viewDate.slice(0, 7); }
+  var base = todayStr();
+  var key = (kind === "weekly") ? weeklyKey(base) : monthlyKey(base);
+  var outline = getReport(state, key, base, kind);
+  if (kind === "weekly") { state.meta.lastWeekly = mondayOf(base); }
+  else { state.meta.lastMonthly = base.slice(0, 7); }
   saveState();
   currentEdit = { key: key, kind: kind, outline: outline };
   $("editorTitle").textContent = outline.titleLine;
