@@ -666,7 +666,7 @@ function draftWeeklyOutline(state, anyDay) {
   var s3 = [];
   for (var k = 0; k < plan.length; k++) { s3.push(pointForPlan(plan[k])); }
   return {
-    titleLine: L.weeklyTitle + "\uff08" + wr[0] + " " + L.to + " " + wr[1] + "\uff09",
+    titleLine: L.weeklyTitle + "\uff08" + wr[0] + " " + weekdayCN(wr[0]) + " " + L.to + " " + wr[1] + " " + weekdayCN(wr[1]) + "\uff09",
     sections: [
       { title: L.secWeekDone, points: s1 },
       { title: L.secWeekSummary, points: summaryPoints(open) },
@@ -674,6 +674,10 @@ function draftWeeklyOutline(state, anyDay) {
     ]
   };
 }
+
+var WD_CN = ["\u5468\u65e5", "\u5468\u4e00", "\u5468\u4e8c", "\u5468\u4e09", "\u5468\u56db", "\u5468\u4e94", "\u5468\u516d"];
+
+function weekdayCN(s) { return WD_CN[parseDate(s).getDay()]; }
 
 function draftMonthlyOutline(state, anyDay) {
   var mr = monthRange(anyDay);
