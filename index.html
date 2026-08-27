@@ -99,12 +99,34 @@ form input:focus, .navbtns input:focus { outline: 2px solid #bfdbfe; border-colo
 .celebratebox .sub2 { font-size: 12px; color: #9aa4b2; margin-top: 6px; }
 .floatemo { position: absolute; bottom: -40px; font-size: 26px; animation: floatup 2.6s ease-in forwards; }
 @keyframes floatup { to { transform: translateY(-115vh) rotate(40deg); opacity: .95; } }
-.starcard { padding: 14px 20px; }
-.starline { display: flex; gap: 12px; align-items: center; }
-.starbig { font-size: 40px; animation: bounce 2.2s ease-in-out infinite; }
-.starinfo b { font-size: 15px; color: #1f3a5f; }
-.stardetail { display: block; font-size: 12px; color: #6b7280; margin-top: 3px; }
+.starcard { padding: 16px 20px; }
+.ckstage { position: relative; }
+.ckbubble { display: inline-block; background: #fff; border: 2px solid #dfe6ef; border-radius: 16px; padding: 6px 14px; font-size: 13px; color: #475569; position: relative; margin: 0 0 6px 8px; max-width: 90%; }
+.ckbubble:after { content: ""; position: absolute; left: 22px; bottom: -9px; width: 12px; height: 12px; background: #fff; border-right: 2px solid #dfe6ef; border-bottom: 2px solid #dfe6ef; transform: rotate(45deg); }
+.ckcast { display: flex; align-items: flex-end; gap: 6px; }
+.ckmain { width: 200px; max-width: 62%; }
+.ckscene { width: 100%; height: auto; display: block; }
+.ckfriend { width: 84px; position: relative; margin-bottom: 6px; }
+.ckfriend .cksvg { width: 100%; height: auto; display: block; }
+.cktag { position: absolute; top: -6px; left: 50%; transform: translateX(-50%); background: #fff3cd; color: #8a6d1b; border: 1px solid #ffe08a; border-radius: 10px; font-size: 11px; padding: 1px 8px; white-space: nowrap; }
+.ck-pop { animation: ckPop .5s cubic-bezier(.2,1.5,.4,1); }
+@keyframes ckPop { 0% { transform: scale(0) rotate(-12deg); opacity: 0; } 100% { transform: scale(1) rotate(0); opacity: 1; } }
+.ck-breathe { transform-origin: 85px 112px; animation: ckBreathe 3.2s ease-in-out infinite; }
+@keyframes ckBreathe { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-2.5px); } }
+.ck-pen { transform-origin: 112px 96px; animation: ckPen 1.3s ease-in-out infinite; }
+@keyframes ckPen { 0%,100% { transform: rotate(0); } 50% { transform: rotate(-7deg); } }
+.ckstats { margin-top: 12px; }
+.ckstats b { font-size: 15px; color: #1f3a5f; }
+.ckmeta { display: block; font-size: 12px; color: #6b7280; margin-top: 3px; }
 .starcard .pbar { margin: 10px 0 4px; }
+.ckcelecast { display: flex; justify-content: center; align-items: flex-end; gap: 8px; }
+.ckjump { width: 96px; }
+.ckjump .cksvg { width: 100%; height: auto; display: block; }
+.ckjump.j1 { animation: ckHop .7s ease-in-out infinite; }
+.ckjump.j2 { animation: ckHop .7s ease-in-out .12s infinite; }
+.ckjump.j3 { animation: ckHop .7s ease-in-out .24s infinite; }
+@keyframes ckHop { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-26px); } }
+.ckbigbubble { display: inline-block; background: #fff; border: 3px solid #f6a5c0; color: #e05297; font-weight: bold; font-size: 20px; border-radius: 20px; padding: 8px 18px; margin-bottom: 10px; animation: ckPop .5s cubic-bezier(.2,1.5,.4,1); }
 @keyframes pop { 0% { transform: scale(.3); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
 .confetti { position: absolute; top: -20px; width: 10px; height: 14px; border-radius: 2px; animation: fall linear forwards; }
 @keyframes fall { to { transform: translateY(110vh) rotate(720deg); opacity: .9; } }
@@ -1174,7 +1196,7 @@ function initApp() {
   if (carried.length) { saveState(); }
   $("pendingList").addEventListener("pointerdown", onGripDown);
   afterLoad();
-  if (carried.length) { toast("已自动把 " + carried.length + " 项未完成工作结转到今天"); }
+  if (carried.length) { setCkBubble(CK_CARRY); toast("已自动把 " + carried.length + " 项未完成工作结转到今天"); }
   if (syncCfg && syncCfg.keyRaw && cryptoOK()) {
     importRawKey(syncCfg.keyRaw).then(function (key) {
       cryptoKey = key;
@@ -1335,7 +1357,69 @@ function renderMonthDone() {
 
 function toggleMonthDone() { monthDoneOpen = !monthDoneOpen; render(); }
 
-// ---------- 星星激励 ----------
+// ---------- chiikawa 角色模块 ----------
+function ckChiikawa() {
+  return '<svg viewBox="0 0 120 120" class="cksvg"><g stroke="#6b6b6b" stroke-width="2.6" fill="#fff" stroke-linejoin="round" stroke-linecap="round"><ellipse cx="44" cy="24" rx="8.5" ry="11"/><ellipse cx="76" cy="24" rx="8.5" ry="11"/><path d="M24 60 C24 34 96 34 96 60 C96 90 78 100 60 100 C42 100 24 90 24 60 Z"/><circle cx="47" cy="58" r="3.1" fill="#4a4a4a" stroke="none"/><circle cx="73" cy="58" r="3.1" fill="#4a4a4a" stroke="none"/><path d="M55 68 q5 5 10 0" fill="none"/><ellipse cx="37" cy="68" rx="6" ry="3.4" fill="#ffd7de" stroke="none"/><ellipse cx="83" cy="68" rx="6" ry="3.4" fill="#ffd7de" stroke="none"/></g></svg>';
+}
+function ckHachi() {
+  return '<svg viewBox="0 0 120 120" class="cksvg"><g stroke="#6b6b6b" stroke-width="2.6" fill="#fff" stroke-linejoin="round" stroke-linecap="round"><path d="M30 34 L22 12 L46 26 Z" fill="#6aa9e0"/><path d="M90 34 L98 12 L74 26 Z" fill="#6aa9e0"/><path d="M24 60 C24 34 96 34 96 60 C96 90 78 100 60 100 C42 100 24 90 24 60 Z"/><path d="M24 58 C26 38 44 33 55 34 C48 40 44 48 44 55 C38 51 30 52 24 58 Z" fill="#6aa9e0" stroke="none"/><path d="M96 58 C94 38 76 33 65 34 C72 40 76 48 76 55 C82 51 90 52 96 58 Z" fill="#6aa9e0" stroke="none"/><circle cx="47" cy="60" r="3.1" fill="#4a4a4a" stroke="none"/><circle cx="73" cy="60" r="3.1" fill="#4a4a4a" stroke="none"/><path d="M54 68 q3 3 6 0 q3 3 6 0" fill="none"/></g></svg>';
+}
+function ckUsagi() {
+  return '<svg viewBox="0 0 120 120" class="cksvg"><g stroke="#6b6b6b" stroke-width="2.6" fill="#ffe08a" stroke-linejoin="round" stroke-linecap="round"><ellipse cx="46" cy="20" rx="8" ry="18"/><ellipse cx="74" cy="20" rx="8" ry="18"/><path d="M26 64 C26 38 94 38 94 64 C94 92 78 100 60 100 C42 100 26 92 26 64 Z"/><circle cx="47" cy="58" r="3.1" fill="#4a4a4a" stroke="none"/><circle cx="73" cy="58" r="3.1" fill="#4a4a4a" stroke="none"/><path d="M50 68 q10 14 20 0 Z" fill="#e8897a"/></g></svg>';
+}
+function ckMomonga() {
+  return '<svg viewBox="0 0 120 120" class="cksvg"><g stroke="#6b6b6b" stroke-width="2.6" fill="#f3e9dc" stroke-linejoin="round" stroke-linecap="round"><path d="M96 62 C118 52 118 96 94 94 C104 82 104 70 92 68 Z" fill="#e7d3bd"/><circle cx="40" cy="30" r="7"/><circle cx="80" cy="30" r="7"/><ellipse cx="60" cy="62" rx="34" ry="32"/><circle cx="48" cy="60" r="5" fill="#4a4a4a" stroke="none"/><circle cx="72" cy="60" r="5" fill="#4a4a4a" stroke="none"/><circle cx="49.5" cy="58" r="1.6" fill="#fff" stroke="none"/><circle cx="73.5" cy="58" r="1.6" fill="#fff" stroke="none"/><path d="M56 72 q4 3 8 0" fill="none"/></g></svg>';
+}
+function ckShisa() {
+  return '<svg viewBox="0 0 120 120" class="cksvg"><g stroke="#6b6b6b" stroke-width="2.4" stroke-linejoin="round"><path d="M60 18 L70 34 L88 26 L84 46 L104 48 L90 62 L104 76 L84 78 L88 98 L70 90 L60 106 L50 90 L32 98 L36 78 L16 76 L30 62 L16 48 L36 46 L32 26 L50 34 Z" fill="#e0b93f"/><circle cx="60" cy="62" r="28" fill="#f6d76b"/><circle cx="50" cy="60" r="3" fill="#4a4a4a" stroke="none"/><circle cx="70" cy="60" r="3" fill="#4a4a4a" stroke="none"/><path d="M54 70 q6 5 12 0" fill="none"/></g></svg>';
+}
+function ckChar(key) {
+  if (key === "hachiware") { return ckHachi(); }
+  if (key === "usagi") { return ckUsagi(); }
+  if (key === "momonga") { return ckMomonga(); }
+  if (key === "shisa") { return ckShisa(); }
+  return ckChiikawa();
+}
+function ckDesk() {
+  return '<svg viewBox="0 0 200 150" class="ckscene"><g stroke="#6b6b6b" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"><rect x="20" y="112" width="160" height="12" rx="5" fill="#d8b48c"/><rect x="34" y="124" width="9" height="20" fill="#c9a276"/><rect x="157" y="124" width="9" height="20" fill="#c9a276"/><g class="ck-paper"><rect x="66" y="100" width="46" height="16" rx="2" fill="#fff"/><line x1="72" y1="106" x2="100" y2="106" stroke="#c9d2df" stroke-width="1.6"/><line x1="72" y1="110" x2="96" y2="110" stroke="#c9d2df" stroke-width="1.6"/></g><g class="ck-breathe" fill="#fff"><ellipse cx="70" cy="52" rx="8" ry="10"/><ellipse cx="100" cy="52" rx="8" ry="10"/><path d="M50 84 C50 58 120 58 120 84 C120 104 106 112 85 112 C64 112 50 104 50 84 Z"/><circle cx="72" cy="82" r="3" fill="#4a4a4a" stroke="none"/><circle cx="98" cy="82" r="3" fill="#4a4a4a" stroke="none"/><path d="M80 90 q5 4 10 0" fill="none"/><ellipse cx="63" cy="90" rx="5" ry="3" fill="#ffd7de" stroke="none"/><ellipse cx="107" cy="90" rx="5" ry="3" fill="#ffd7de" stroke="none"/></g><g class="ck-pen" fill="none"><path d="M112 96 q14 6 20 12"/><rect x="126" y="100" width="5" height="16" rx="2" transform="rotate(38 128 108)" fill="#f2b134" stroke="#6b6b6b" stroke-width="1.6"/></g></g></svg>';
+}
+
+var CK_TIERS = [
+  { n: 0, name: "吉伊的起点", comp: null },
+  { n: 1, name: "遇见小八", comp: "hachiware" },
+  { n: 10, name: "乌萨奇加入", comp: "usagi" },
+  { n: 30, name: "飞鼠来啦", comp: "momonga" },
+  { n: 60, name: "狮萨镇场", comp: "shisa" }
+];
+function ckTier(total) {
+  var cur = CK_TIERS[0], next = null;
+  for (var i = 0; i < CK_TIERS.length; i++) {
+    if (total >= CK_TIERS[i].n) { cur = CK_TIERS[i]; }
+    else if (!next) { next = CK_TIERS[i]; }
+  }
+  return { cur: cur, next: next };
+}
+
+var CK_IDLE = ["今天也要一起加油呀～", "慢慢来，没关系的", "写呀写呀…我在努力哦", "有进展就值得表扬！", "累了就歇一下下"];
+var CK_PRAISE = [
+  { who: "小八", text: "没关系，会好的！" },
+  { who: "吉伊", text: "嗯！做到了！" },
+  { who: "乌萨奇", text: "呀哈——！太强啦！" },
+  { who: "飞鼠", text: "好厉害，蹭蹭～" },
+  { who: "狮萨", text: "厉害喵！" }
+];
+var CK_CARRY = "没关系，还有我们陪你一起～";
+var ckBubble = null;
+function setCkBubble(text) { ckBubble = text; }
+
+function ckReportFooter(n) {
+  if (n >= 15) { return "本台小结 · 乌萨奇：呀哈——！给你打 A+！"; }
+  if (n >= 8) { return "本台小结 · 小八：做得很好，超努力的！"; }
+  if (n >= 1) { return "本台小结 · 吉伊：一步一步，都很棒。"; }
+  return "本台小结 · 狮萨：休息，也是努力的一部分。";
+}
+
+// ---------- 星星激励（吉伊书桌小剧场） ----------
 function renderStars() {
   var total = 0;
   var weekCnt = 0;
@@ -1351,18 +1435,34 @@ function renderStars() {
       if (ds === t) { todayCnt++; }
     }
   }
-  var b = badgeFor(total);
-  var html = '<div class="starline"><span class="starbig">' + (b.current ? b.current.e : "\ud83d\udc23") + '</span>'
-    + '<div class="starinfo"><b>已收集 ' + total + ' 颗小星星 ⭐</b>'
-    + '<span class="stardetail">今天 ' + todayCnt + ' · 本周 ' + weekCnt + ' · 当前称号：' + (b.current ? b.current.t + " " + b.current.e : "还没起步 \ud83d\udc23") + '</span></div></div>';
-  if (b.next) {
-    var prevN = b.current ? b.current.n : 0;
-    var pct = Math.max(4, Math.round((total - prevN) * 100 / (b.next.n - prevN)));
-    html += '<div class="pbar"><i style="width:' + pct + '%"></i></div>'
-      + '<div class="pmeta">再完成 ' + (b.next.n - total) + ' 项，解锁「' + b.next.t + " " + b.next.e + '」</div>';
-  } else {
-    html += '<div class="pmeta">全部称号已解锁，你就是传奇！🏆</div>';
+  var tier = ckTier(total);
+  var line = ckBubble;
+  if (!line) {
+    var mins = Math.floor(Date.now() / 60000);
+    line = CK_IDLE[mins % CK_IDLE.length];
   }
+  var friend = "";
+  if (tier.cur.comp) {
+    friend = '<div class="ckfriend ck-pop">' + ckChar(tier.cur.comp) + '<span class="cktag">' + tier.cur.name + '</span></div>';
+  }
+  var html = '<div class="ckstage">'
+    + '<div class="ckbubble">' + esc(line) + '</div>'
+    + '<div class="ckcast">'
+    +   '<div class="ckmain">' + ckDesk() + '</div>'
+    +   friend
+    + '</div>'
+    + '<div class="ckstats">'
+    +   '<b>已收集 ' + total + ' 颗小星星 ⭐</b>'
+    +   '<span class="ckmeta">今天 ' + todayCnt + ' · 本周 ' + weekCnt + ' · 当前伙伴：吉伊' + (tier.cur.comp ? " + " + tier.cur.name : "") + '</span>';
+  if (tier.next) {
+    var prevN = tier.cur.n;
+    var pct = Math.max(4, Math.round((total - prevN) * 100 / (tier.next.n - prevN)));
+    html += '<div class="pbar"><i style="width:' + pct + '%"></i></div>'
+      + '<div class="pmeta">再完成 ' + (tier.next.n - total) + ' 项，「' + tier.next.name + '」就来啦！</div>';
+  } else {
+    html += '<div class="pmeta">大家都到齐啦，你就是传说的一族！🏆</div>';
+  }
+  html += '</div></div>';
   $("starBox").innerHTML = html;
 }
 
@@ -1795,7 +1895,9 @@ function doComplete(id) {
     if (pendingFor(t).length === 0 && doneFor(t).length > 0) {
       showCelebrate(total, unlocked);
     } else {
-      toast("+1 ⭐ " + PRAISE[Math.floor(Math.random() * PRAISE.length)]);
+      var pr = CK_PRAISE[Math.floor(Math.random() * CK_PRAISE.length)];
+      setCkBubble(pr.who + "：" + pr.text);
+      toast(pr.who + "：" + pr.text + " +1 ⭐");
     }
   }, 380);
 }
@@ -1814,10 +1916,10 @@ var PRAISE = [
 ];
 
 var BIGPRAISE = [
-  "哇！今天的待办全部完成啦！你简直太棒啦！",
-  "太厉害了！今天的事情全部搞定！奖励自己一下！",
-  "完美收工！今天的你超级棒！",
-  "小动物们都跑来为你庆祝啦！"
+  "吉伊、小八、乌萨奇全体出动为你庆祝！",
+  "太厉害啦！今天的你闪闪发光！",
+  "完美收工！大家击掌庆祝！",
+  "呜…做完啦！（吉伊感动抹眼泪）"
 ];
 
 function showCelebrate(total, unlocked) {
@@ -1826,10 +1928,14 @@ function showCelebrate(total, unlocked) {
   var div = document.createElement("div");
   div.id = "celebrate";
   var msg = BIGPRAISE[Math.floor(Math.random() * BIGPRAISE.length)];
-  var bigs = ["\ud83d\udc30", "\ud83d\udc3b", "\ud83e\udd8a", "\ud83d\udc3c", "\ud83d\udc28"];
-  var big = bigs[Math.floor(Math.random() * bigs.length)];
+  var cast = '<div class="ckcelecast">'
+    + '<div class="ckjump j1">' + ckChiikawa() + '</div>'
+    + '<div class="ckjump j2">' + ckUsagi() + '</div>'
+    + '<div class="ckjump j3">' + ckHachi() + '</div>'
+    + '</div>'
+    + '<div class="ckbigbubble">呀哈————！全部完成！！</div>';
   var html = '<div class="celebratebox">'
-    + '<div class="big bounce">' + big + '</div>'
+    + cast
     + '<div class="msg rainbow">' + esc(msg) + '</div>'
     + '<div class="sub">已收集 ' + total + ' 颗小星星 ⭐'
     + (unlocked ? ' · 解锁新称号「' + unlocked.t + ' ' + unlocked.e + '」' : '')
@@ -1990,7 +2096,7 @@ function saveEditor() {
 function previewEditor() {
   state.reports[currentEdit.key] = currentEdit.outline;
   saveState();
-  modalTextCache = renderOutlineText(currentEdit.outline);
+  modalTextCache = renderOutlineText(currentEdit.outline) + "\r\n\r\n" + ckReportFooter(currentEdit.outline.sections[0].points.length);
   modalFileCache = (currentEdit.kind === "weekly")
     ? ("工作周报_" + mondayOf(viewDate) + ".md")
     : ("工作月报_" + viewDate.slice(0, 4) + "年" + parseInt(viewDate.slice(5, 7), 10) + "月.md");
