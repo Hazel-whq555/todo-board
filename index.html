@@ -76,8 +76,12 @@ form input:focus, .navbtns input:focus { outline: 2px solid #bfdbfe; border-colo
 .fdate { font-size: 13px; font-weight: bold; color: #1f3a5f; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; }
 .fdate button { font-size: 12px; padding: 2px 10px; }
 .fgroup ul { list-style: none; padding-left: 4px; }
-.fgroup li { font-size: 14px; padding: 5px 0; color: #374151; border-bottom: 1px dashed #eef1f5; display: flex; align-items: center; gap: 4px; }
+.fgroup li { font-size: 14px; padding: 6px 0; color: #374151; border-bottom: 1px dashed #eef1f5; display: block; }
 .fgroup li:last-child { border-bottom: none; }
+.frowline { display: flex; align-items: center; gap: 4px; }
+.fdetail { margin: 6px 0 2px; background: #f8fafc; border: 1px solid #eef1f5; border-radius: 8px; padding: 8px 12px; font-size: 13px; color: #374151; line-height: 1.7; }
+.fdetail p { margin: 2px 0; word-break: break-all; }
+.fdetail b { color: #1f3a5f; font-weight: normal; }
 .ftitle { flex: 1; min-width: 0; word-break: break-all; }
 .fedit { flex: none; font-size: 12px; padding: 2px 10px; }
 .tbdlab { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: #475569; }
@@ -141,7 +145,7 @@ form input:focus, .navbtns input:focus { outline: 2px solid #bfdbfe; border-colo
 .todayhead h2 { margin-bottom: 0; font-size: 18px; }
 .todaybadge { background: #2563eb; color: #fff; border-radius: 20px; padding: 2px 12px; font-size: 13px; margin-left: 8px; font-weight: normal; }
 .todaybadge.done { background: #1e7d46; }
-.trow { display: flex; align-items: center; gap: 10px; padding: 10px 4px; border-bottom: 1px solid #eef1f5; }
+.trow { display: flex; align-items: center; gap: 10px; padding: 10px 4px; border-bottom: 1px solid #eef1f5; flex-wrap: wrap; }
 .trow:last-child { border-bottom: none; }
 .tnum { color: #9aa4b2; width: 20px; flex: none; text-align: right; font-size: 13px; }
 .ttitle { flex: 1; font-size: 16px; font-weight: bold; cursor: pointer; word-break: break-all; line-height: 1.5; }
@@ -320,6 +324,18 @@ form input:focus, .navbtns input:focus { outline: 2px solid #bfdbfe; border-colo
     </div>
   </div>
 </div>
+<div id="moveOverlay" class="overlay" style="display:none;z-index:57" onclick="if(event.target===this)closeMove()">
+  <div class="modal" style="max-width:420px">
+    <h3 id="moveTitle">移到指定日期</h3>
+    <div class="syncbody">
+      <div class="formrow" style="margin:0"><label>日期 <input type="date" id="mvDate"></label></div>
+    </div>
+    <div class="modalbtns">
+      <button class="primary" onclick="saveMove()">确定</button>
+      <button onclick="closeMove()">取消</button>
+    </div>
+  </div>
+</div>
 <div id="toast"></div>
 
 <script>
@@ -488,22 +504,60 @@ function carryUnfinishedToTomorrow(state, today) {
   return moved;
 }
 
+// Midnight auto-carry: when the app is opened on a new day, unfinished
+// items dated before today are moved onto today so nothing is forgotten.
+function autoCarryToToday(state, today) {
+  var moved = [];
+  for (var i = 0; i < state.items.length; i++) {
+    var it = state.items[i];
+    if (it.status === "todo" && it.date && it.date < today) { moved.push(it); }
+  }
+  var max = -1;
+  for (var j = 0; j < state.items.length; j++) {
+    var o = state.items[j];
+    if (o.date === today && typeof o.order === "number" && o.order > max) { max = o.order; }
+  }
+  for (var k = 0; k < moved.length; k++) {
+    var it2 = moved[k];
+    it2.date = today;
+    it2.order = ++max;
+    it2.rollCount = (it2.rollCount || 0) + 1;
+    it2.hint = buildCarryHint(it2);
+    it2.updatedAt = new Date().getTime();
+  }
+  return moved;
+}
+
 var HINT_L = {
   carry: "\u627f\u63a5\u524d\u65e5\uff0c\u5df2\u5b8c\u6210",
   goOn: "%\uff0c\u7ee7\u7eed\u63a8\u8fdb",
-  notStart: "\u5c1a\u672a\u5f00\u59cb\uff0c\u4f18\u5148\u5b89\u6392",
-  noteTag: "\u6ce8\u610f\uff1a",
-  progTag: "\u524d\u65e5\u8fdb\u5ea6\uff1a",
-  sep: "\uff1b"
+  notStart: "\u5c1a\u672a\u5f00\u59cb\uff0c\u4f18\u5148\u5b89\u6392"
 };
 
+// Hint only summarizes progress; note/progress text stays on the item
+// itself and is not duplicated here.
 function buildCarryHint(it) {
-  var parts = [];
-  if (it.percent > 0) { parts.push(HINT_L.carry + it.percent + HINT_L.goOn); }
-  else { parts.push(HINT_L.notStart); }
-  if (it.note) { parts.push(HINT_L.noteTag + it.note); }
-  if (it.progress) { parts.push(HINT_L.progTag + it.progress); }
-  return parts.join(HINT_L.sep);
+  if (it.percent > 0) { return HINT_L.carry + it.percent + HINT_L.goOn; }
+  return HINT_L.notStart;
+}
+
+// Turn a completed item back into an open todo (work that needs another
+// pass after feedback). Percent resets; notes/progress are kept for reference.
+function reopenItem(state, id, date) {
+  var it = findItem(state, id);
+  if (!it) { return null; }
+  it.status = "todo";
+  it.doneAt = null;
+  it.date = date;
+  it.percent = 0;
+  var max = -1;
+  for (var i = 0; i < state.items.length; i++) {
+    var o = state.items[i];
+    if (o.date === date && typeof o.order === "number" && o.order > max) { max = o.order; }
+  }
+  it.order = max + 1;
+  it.updatedAt = new Date().getTime();
+  return it;
 }
 
 // ---------- incentive: stars & badges ----------
@@ -1115,9 +1169,12 @@ function joinSync() {
 function initApp() {
   state = loadLocalState() || newState();
   migrateOrder();
+  var carried = autoCarryToToday(state, todayStr());
   syncCfg = loadSyncCfg();
+  if (carried.length) { saveState(); }
   $("pendingList").addEventListener("pointerdown", onGripDown);
   afterLoad();
+  if (carried.length) { toast("已自动把 " + carried.length + " 项未完成工作结转到今天"); }
   if (syncCfg && syncCfg.keyRaw && cryptoOK()) {
     importRawKey(syncCfg.keyRaw).then(function (key) {
       cryptoKey = key;
@@ -1271,7 +1328,7 @@ function renderMonthDone() {
   for (var k = 0; k < list.length; k++) {
     var it = list[k];
     var ds = fmtDate(new Date(it.doneAt));
-    html += '<div class="doneitem"><span class="time">' + ds.slice(5) + " " + weekCN(ds) + '</span><span class="mdtitle">' + esc(it.title) + '</span></div>';
+    html += '<div class="doneitem"><span class="time">' + ds.slice(5) + " " + weekCN(ds) + '</span><span class="mdtitle">' + esc(it.title) + '</span><button onclick="reopenUI(\'' + it.id + '\')">重做</button></div>';
   }
   box.innerHTML = html;
 }
@@ -1337,6 +1394,7 @@ function renderTodayStrip() {
         + '<span class="ttitle" onclick="editFuture(\'' + it.id + '\')" title="点击写进度/注意事项">' + esc(it.title) + (it.note ? ' <span class="chip amber">有注意事项</span>' : '') + (it.hint ? ' <span class="chip blue">有提示</span>' : '') + '</span>'
         + '<div class="tprog"><input type="range" min="0" max="100" step="5" value="' + it.percent + '" title="拖动设置进度" oninput="setPercent(\'' + it.id + '\',this.value,this)" onchange="render()"><div class="pmeta">进度 ' + it.percent + '%</div></div>'
         + '<button onclick="doRoll(\'' + it.id + '\')">移到明天</button>'
+        + '<button onclick="moveToDate(\'' + it.id + '\')">移到…</button>'
         + '</div>';
     }
     box.innerHTML = html;
@@ -1370,7 +1428,7 @@ function renderOverdue() {
       var o = list[k];
       html += '<div class="overdueitem"><span class="chip red">' + o.date.slice(5) + '</span><span class="t">' + esc(o.title) + '</span>'
         + '<button onclick="pullToToday(\'' + o.id + '\')">移到今天</button>'
-        + '<button onclick="doRoll(\'' + o.id + '\')">移到明天</button></div>';
+        + '<button onclick="moveToDate(\'' + o.id + '\')">移到…</button></div>';
     }
   }
   box.innerHTML = html;
@@ -1462,6 +1520,7 @@ function itemCard(it) {
     + detail
     + '<div class="acts">'
     + '<button onclick="doRoll(\'' + it.id + '\')">' + rollLabel + '</button>'
+    + '<button onclick="moveToDate(\'' + it.id + '\')">移到…</button>'
     + '<button onclick="startEdit(\'' + it.id + '\')">编辑</button>'
     + '<button class="danger" onclick="doDelete(\'' + it.id + '\')">删除</button>'
     + '</div>'
@@ -1500,7 +1559,7 @@ function renderDone(done) {
     html += '<div class="doneitem">'
       + '<span class="t">' + esc(it.title) + '</span>'
       + '<span class="time">完成于 ' + hm + '</span>'
-      + '<button onclick="doUndo(\'' + it.id + '\')">恢复</button>'
+      + '<button onclick="reopenUI(\'' + it.id + '\')">重做</button>'
       + '<button class="danger" onclick="doDelete(\'' + it.id + '\')">删除</button>'
       + '</div>';
   }
@@ -1546,11 +1605,20 @@ function renderFuture() {
 }
 
 function futureRow(it, num, isTbd) {
-  return '<li><span class="fnum">' + num + '.</span><span class="ftitle">' + esc(it.title)
+  var detail = "";
+  if (it.note || it.hint || it.progress) {
+    detail = '<div class="fdetail">'
+      + (it.note ? '<p><b>注意事项：</b>' + esc(it.note) + '</p>' : '')
+      + (it.hint ? '<p><b>工作提示：</b>' + esc(it.hint) + '</p>' : '')
+      + (it.progress ? '<p><b>进度说明：</b>' + esc(it.progress) + '</p>' : '')
+      + '</div>';
+  }
+  return '<li><div class="frowline"><span class="fnum">' + num + '.</span><span class="ftitle">' + esc(it.title)
     + (isTbd ? ' <span class="chip gray">待定</span>' : '')
     + (it.note ? ' <span class="chip amber">有注意事项</span>' : '')
     + '</span><button class="fedit" onclick="editFuture(\'' + it.id + '\')">编辑</button>'
-    + '<button class="fedit danger" onclick="doDelete(\'' + it.id + '\')">取消</button></li>';
+    + '<button class="fedit danger" onclick="doDelete(\'' + it.id + '\')">取消</button></div>'
+    + detail + '</li>';
 }
 
 var editingFutureId = null;
@@ -1597,6 +1665,45 @@ function saveFutureEdit() {
 function closeFutureEdit() {
   editingFutureId = null;
   $("futureEditOverlay").style.display = "none";
+}
+
+// ---------- 移到指定日期 / 重做 ----------
+var moveAction = null; // {id, mode:"move"|"reopen"}
+
+function moveToDate(id) {
+  moveAction = { id: id, mode: "move" };
+  $("moveTitle").textContent = "移到指定日期";
+  $("mvDate").value = addDays(todayStr(), 1);
+  $("moveOverlay").style.display = "flex";
+}
+
+function reopenUI(id) {
+  moveAction = { id: id, mode: "reopen" };
+  $("moveTitle").textContent = "重做为待办（选择日期）";
+  $("mvDate").value = todayStr();
+  $("moveOverlay").style.display = "flex";
+}
+
+function saveMove() {
+  var d = $("mvDate").value;
+  if (!d) { toast("请选择日期"); return; }
+  var it = findItem(state, moveAction.id);
+  if (!it) { closeMove(); return; }
+  if (moveAction.mode === "reopen") {
+    reopenItem(state, it.id, d);
+    toast("已重做为 " + d + " 的待办");
+  } else {
+    updateItem(state, it.id, { date: d });
+    toast("已移到 " + d);
+  }
+  saveState();
+  closeMove();
+  render();
+}
+
+function closeMove() {
+  moveAction = null;
+  $("moveOverlay").style.display = "none";
 }
 
 function reminderInfo() {
