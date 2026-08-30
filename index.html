@@ -36,6 +36,7 @@ button.danger:hover { background: #fdecea; border-color: #e6a49b; }
 .chip.amber { background: #fdf3e0; color: #a06a00; }
 .chip.blue { background: #e8f1ff; color: #1d4fd8; }
 .chip.gray { background: #f0f0f2; color: #777; }
+.chip.purple { background: #f1ecfb; color: #6b46c1; }
 .banner { background: #fff8e6; border: 1px solid #f0dfa8; color: #7a5c00; border-radius: 10px; padding: 10px 16px; margin-bottom: 14px; font-size: 13px; display: flex; justify-content: space-between; align-items: center; gap: 10px; }
 form input[type=text], form input:not([type]) { width: 100%; padding: 9px 12px; border: 1px solid #d0d7de; border-radius: 8px; font-size: 14px; font-family: inherit; margin-bottom: 10px; }
 form input:focus, .navbtns input:focus { outline: 2px solid #bfdbfe; border-color: #2563eb; }
@@ -270,6 +271,8 @@ form input:focus, .navbtns input:focus { outline: 2px solid #bfdbfe; border-colo
     <h2>添加待办事项</h2>
     <form onsubmit="return addFromForm(event)">
       <input id="fTitle" maxlength="100" placeholder="事项内容（必填），例如：跟进客户合同、整理项目申报材料">
+      <input id="fCat" maxlength="30" list="catList" placeholder="工作分类（可选），例如：项目申报材料、专利开放许可——周报会按分类归并">
+      <datalist id="catList"></datalist>
       <div class="formrow">
         <label>日期 <input type="date" id="fDate" onchange="updateFutureHint()"></label>
         <label class="tbdlab"><input type="checkbox" id="fTbd" onchange="var d=document.getElementById('fDate');d.disabled=this.checked;updateFutureHint()">待定</label>
@@ -346,6 +349,7 @@ form input:focus, .navbtns input:focus { outline: 2px solid #bfdbfe; border-colo
     <h3>编辑事项</h3>
     <div class="syncbody">
       <input id="efTitle" maxlength="100" placeholder="事项内容">
+      <input id="efCat" maxlength="30" list="catList" placeholder="工作分类（可选），周报按此归并">
       <div class="formrow">
         <label>日期 <input type="date" id="efDate"></label>
         <label class="tbdlab"><input type="checkbox" id="efTbd" onchange="efTbdToggle()">待定</label>
@@ -453,6 +457,7 @@ function newItem(opts, now) {
     progress: String(opts.progress || ""),
     note: String(opts.note || ""),
     hint: String(opts.hint || ""),
+    cat: String(opts.cat || ""),
     status: "todo",
     createdAt: ts,
     updatedAt: ts,
@@ -634,6 +639,7 @@ function updateItem(state, id, patch) {
   if (typeof patch.progress === "string") { it.progress = patch.progress; }
   if (typeof patch.note === "string") { it.note = patch.note; }
   if (typeof patch.hint === "string") { it.hint = patch.hint; }
+  if (typeof patch.cat === "string") { it.cat = patch.cat; }
   it.updatedAt = new Date().getTime();
   return it;
 }
@@ -734,6 +740,28 @@ function pointForOpen(it) {
   return p;
 }
 
+// Group completed items into big points by 工作分类 (cat); items without a
+// cat stay standalone. Order follows first appearance in the done list.
+function groupDonePoints(done) {
+  var pts = [];
+  var catIdx = {};
+  for (var i = 0; i < done.length; i++) {
+    var it = done[i];
+    if (it.cat) {
+      if (catIdx[it.cat] === undefined) {
+        catIdx[it.cat] = pts.length;
+        pts.push({ title: it.cat, children: [] });
+      }
+      var line = it.title + L.doneAt + fmtDate(new Date(it.doneAt)).slice(5) + L.close;
+      if (it.progress) { line += " " + L.progressTag + it.progress; }
+      pts[catIdx[it.cat]].children.push(line);
+    } else {
+      pts.push(pointForDone(it));
+    }
+  }
+  return pts;
+}
+
 // Summary draft: only the writing prompt; in-progress items now go to the plan section.
 function summaryPoints(openItems) {
   return [{ title: L.reflectDraft, children: [] }];
@@ -744,12 +772,12 @@ function draftWeeklyOutline(state, anyDay) {
   var done = doneInRange(state, wr[0], wr[1]);
   var open = openScheduled(state, wr[1]);
   var plan = scheduledInRange(state, addDays(wr[1], 1), addDays(wr[1], 7));
-  var s1 = [];
-  for (var i = 0; i < done.length; i++) { s1.push(pointForDone(done[i])); }
+  var s1 = groupDonePoints(done);
   var s3 = [];
   for (var j = 0; j < open.length; j++) { s3.push(pointForOpen(open[j])); }
   for (var k = 0; k < plan.length; k++) { s3.push(pointForPlan(plan[k])); }
   return {
+    v: 2,
     titleLine: L.weeklyTitle + "\uff08" + wr[0] + " " + weekdayCN(wr[0]) + " " + L.to + " " + wr[1] + " " + weekdayCN(wr[1]) + "\uff09",
     sections: [
       { title: L.secWeekDone, points: s1 },
@@ -769,14 +797,14 @@ function draftMonthlyOutline(state, anyDay) {
   var done = doneInRange(state, mr[0], mr[1]);
   var open = openScheduled(state, mr[1]);
   var plan = scheduledInRange(state, nm[0], nm[1]);
-  var s1 = [];
-  for (var i = 0; i < done.length; i++) { s1.push(pointForDone(done[i])); }
+  var s1 = groupDonePoints(done);
   var s3 = [];
   for (var j = 0; j < open.length; j++) { s3.push(pointForOpen(open[j])); }
   for (var k = 0; k < plan.length; k++) { s3.push(pointForPlan(plan[k])); }
   var y = mr[0].slice(0, 4);
   var m = String(parseInt(mr[0].slice(5, 7), 10));
   return {
+    v: 2,
     titleLine: L.monthlyTitle + "\uff08" + y + L.year + m + L.month + "\uff09",
     sections: [
       { title: L.secMonthDone, points: s1 },
@@ -1329,6 +1357,7 @@ function render() {
   renderMonthDone();
   renderFuture();
   renderReminder();
+  renderCatOptions();
   updateFutureHint();
 }
 
@@ -1645,6 +1674,7 @@ function itemCard(it) {
   if (editingId === it.id) { return editCard(it); }
   var t = todayStr();
   var chips = "";
+  if (it.cat) { chips += '<span class="chip purple">' + esc(it.cat) + '</span>'; }
   if (it.date && it.date < t) { chips += '<span class="chip red">已逾期</span>'; }
   if (it.note) { chips += '<span class="chip amber">有注意事项</span>'; }
   if (it.hint) { chips += '<span class="chip blue">有提示</span>'; }
@@ -1678,6 +1708,7 @@ function itemCard(it) {
 function editCard(it) {
   return '<div class="item"><div class="itembody editbox">'
     + '<input id="eTitle_' + it.id + '" value="' + esc(it.title) + '" maxlength="100">'
+    + '<input id="eCat_' + it.id + '" list="catList" placeholder="工作分类（可选），周报按此归并" value="' + esc(it.cat || "") + '" maxlength="30">'
     + '<div class="formrow">'
     + '<label>日期 <input type="date" id="eDate_' + it.id + '" value="' + (it.date || "") + '"' + (it.date ? "" : " disabled") + '></label>'
     + '<label class="tbdlab"><input type="checkbox" id="eTbd_' + it.id + '"' + (it.date ? "" : " checked") + ' onchange="var d=document.getElementById(\'eDate_' + it.id + '\');d.disabled=this.checked;if(this.checked){d.value=\'\';}">待定</label>'
@@ -1762,6 +1793,7 @@ function futureRow(it, num, isTbd) {
       + '</div>';
   }
   return '<li><div class="frowline"><span class="fnum">' + num + '.</span><span class="ftitle">' + esc(it.title)
+    + (it.cat ? ' <span class="chip purple">' + esc(it.cat) + '</span>' : '')
     + (isTbd ? ' <span class="chip gray">待定</span>' : '')
     + (it.note ? ' <span class="chip amber">有注意事项</span>' : '')
     + '</span><button class="fedit" onclick="editFuture(\'' + it.id + '\')">编辑</button>'
@@ -1776,6 +1808,7 @@ function editFuture(id) {
   if (!it) { return; }
   editingFutureId = id;
   $("efTitle").value = it.title;
+  $("efCat").value = it.cat || "";
   $("efDate").value = it.date || "";
   $("efDate").disabled = !it.date;
   $("efTbd").checked = !it.date;
@@ -1802,7 +1835,8 @@ function saveFutureEdit() {
     percent: parseInt($("efPercent").value, 10) || 0,
     progress: trimStr($("efProgress").value),
     note: trimStr($("efNote").value),
-    hint: trimStr($("efHint").value)
+    hint: trimStr($("efHint").value),
+    cat: trimStr($("efCat").value)
   });
   saveState();
   closeFutureEdit();
@@ -1854,6 +1888,18 @@ function closeMove() {
   $("moveOverlay").style.display = "none";
 }
 
+function renderCatOptions() {
+  var el = $("catList");
+  if (!el) { return; }
+  var seen = {};
+  var opts = "";
+  for (var i = 0; i < state.items.length; i++) {
+    var c = state.items[i].cat;
+    if (c && !seen[c]) { seen[c] = 1; opts += '<option value="' + esc(c) + '"></option>'; }
+  }
+  el.innerHTML = opts;
+}
+
 function reminderInfo() {
   var t = todayStr();
   var msgs = [];
@@ -1897,7 +1943,8 @@ function addFromForm(ev) {
     date: date,
     percent: parseInt($("fPercent").value, 10) || 0,
     progress: $("fProgress").value.replace(/^\s+|\s+$/g, ""),
-    note: $("fNote").value.replace(/^\s+|\s+$/g, "")
+    note: $("fNote").value.replace(/^\s+|\s+$/g, ""),
+    cat: trimStr($("fCat").value)
   });
   saveState();
   $("fTitle").value = "";
@@ -2044,7 +2091,8 @@ function saveEdit(id) {
     percent: parseInt($("ePercent_" + id).value, 10) || 0,
     progress: $("eProgress_" + id).value.replace(/^\s+|\s+$/g, ""),
     note: $("eNote_" + id).value.replace(/^\s+|\s+$/g, ""),
-    hint: $("eHint_" + id).value.replace(/^\s+|\s+$/g, "")
+    hint: $("eHint_" + id).value.replace(/^\s+|\s+$/g, ""),
+    cat: $("eCat_" + id) ? $("eCat_" + id).value.replace(/^\s+|\s+$/g, "") : ""
   });
   editingId = null;
   saveState();
