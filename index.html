@@ -726,25 +726,17 @@ function pointForPlan(it) {
   return p;
 }
 
-// Summary draft: one big point listing in-progress items with percent,
-// plus one empty big point as a writing prompt.
+// Unfinished item as a next-period plan point, carrying its progress.
+function pointForOpen(it) {
+  var p = { title: it.title + "\uff08" + L.percentTag + it.percent + "%\uff09", children: [] };
+  if (it.progress) { p.children.push(L.progressTag + it.progress); }
+  if (it.note) { p.children.push(L.noteTag + it.note); }
+  return p;
+}
+
+// Summary draft: only the writing prompt; in-progress items now go to the plan section.
 function summaryPoints(openItems) {
-  var pts = [];
-  if (openItems.length > 0) {
-    var kids = [];
-    for (var i = 0; i < openItems.length; i++) {
-      var it = openItems[i];
-      var kid = it.title + "\uff08" + L.percentTag + it.percent + "%\uff09";
-      var extra = [];
-      if (it.progress) { extra.push(it.progress); }
-      if (it.note) { extra.push(L.noteTag + it.note); }
-      if (extra.length > 0) { kid += " " + extra.join("\uff1b"); }
-      kids.push(kid);
-    }
-    pts.push({ title: L.openDraft, children: kids });
-  }
-  pts.push({ title: L.reflectDraft, children: [] });
-  return pts;
+  return [{ title: L.reflectDraft, children: [] }];
 }
 
 function draftWeeklyOutline(state, anyDay) {
@@ -755,6 +747,7 @@ function draftWeeklyOutline(state, anyDay) {
   var s1 = [];
   for (var i = 0; i < done.length; i++) { s1.push(pointForDone(done[i])); }
   var s3 = [];
+  for (var j = 0; j < open.length; j++) { s3.push(pointForOpen(open[j])); }
   for (var k = 0; k < plan.length; k++) { s3.push(pointForPlan(plan[k])); }
   return {
     titleLine: L.weeklyTitle + "\uff08" + wr[0] + " " + weekdayCN(wr[0]) + " " + L.to + " " + wr[1] + " " + weekdayCN(wr[1]) + "\uff09",
@@ -779,6 +772,7 @@ function draftMonthlyOutline(state, anyDay) {
   var s1 = [];
   for (var i = 0; i < done.length; i++) { s1.push(pointForDone(done[i])); }
   var s3 = [];
+  for (var j = 0; j < open.length; j++) { s3.push(pointForOpen(open[j])); }
   for (var k = 0; k < plan.length; k++) { s3.push(pointForPlan(plan[k])); }
   var y = mr[0].slice(0, 4);
   var m = String(parseInt(mr[0].slice(5, 7), 10));
