@@ -815,9 +815,20 @@ function draftMonthlyOutline(state, anyDay) {
 }
 
 // Render outline to plain text:
+function toCnNum(n) {
+  var D = ["", "\u4e00", "\u4e8c", "\u4e09", "\u56db", "\u4e94", "\u516d", "\u4e03", "\u516b", "\u4e5d"];
+  var SHI = "\u5341";
+  if (n < 10) { return D[n] || String(n); }
+  if (n === 10) { return SHI; }
+  if (n < 20) { return SHI + D[n % 10]; }
+  var s = D[Math.floor(n / 10)] + SHI;
+  if (n % 10) { s += D[n % 10]; }
+  return s;
+}
+
 //   title line
 //   [num]、section title
-//   （1）big point
+//   （一）big point
 //   1. small point
 //   2. small point
 function renderOutlineText(outline) {
@@ -837,7 +848,7 @@ function renderOutlineText(outline) {
       var title = String(p.title || "").replace(/^\s+|\s+$/g, "");
       if (title === "" && kids.length === 0) { continue; }
       num++;
-      out.push("\uff08" + num + "\uff09" + title);
+      out.push("\uff08" + toCnNum(num) + "\uff09" + title);
       for (var k = 0; k < kids.length; k++) { out.push((k + 1) + ". " + kids[k]); }
     }
     if (num === 0) { out.push(L.none); }
@@ -2148,7 +2159,7 @@ function renderEditor() {
     for (var i = 0; i < sec.points.length; i++) {
       var p = sec.points[i];
       html += '<div class="edpoint"><div class="edprow">'
-        + '<span class="ednum">（' + (i + 1) + '）</span>'
+        + '<span class="ednum">（' + toCnNum(i + 1) + '）</span>'
         + '<input class="edtitle" value="' + esc(p.title) + '" placeholder="大点标题" oninput="edInput(' + s + ',' + i + ',-1,this.value)">'
         + '<button title="上移" onclick="movePoint(' + s + ',' + i + ',-1)">↑</button>'
         + '<button title="下移" onclick="movePoint(' + s + ',' + i + ',1)">↓</button>'
