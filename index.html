@@ -124,6 +124,12 @@ form input:focus, .navbtns input:focus { outline: 2px solid #bfdbfe; border-colo
 @keyframes ckBreathe { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-2.5px); } }
 .ck-pen { transform-box: fill-box; transform-origin: left center; animation: ckPen 1.3s ease-in-out infinite; }
 @keyframes ckPen { 0%,100% { transform: rotate(0); } 50% { transform: rotate(-7deg); } }
+.ck-apple { transform-box: fill-box; transform-origin: center; animation: ckChomp 1.1s ease-in-out infinite; }
+@keyframes ckChomp { 0%,100% { transform: scale(1); } 30% { transform: scale(.88) rotate(-6deg); } 60% { transform: scale(1.04); } }
+.ck-zzz { transform-box: fill-box; animation: ckZzz 2.6s ease-in-out infinite; }
+@keyframes ckZzz { 0% { transform: translateY(0); opacity: 0; } 30% { opacity: 1; } 100% { transform: translateY(-16px); opacity: 0; } }
+.ck-ball { transform-box: fill-box; transform-origin: center bottom; animation: ckBall 1s cubic-bezier(.3,0,.6,1) infinite; }
+@keyframes ckBall { 0%,100% { transform: translateY(0) scaleY(.9) scaleX(1.05); } 45% { transform: translateY(-34px) scaleY(1) scaleX(1); } }
 .ckstats { margin-top: 12px; }
 .ckstats b { font-size: 15px; color: #1f3a5f; }
 .ckmeta { display: block; font-size: 12px; color: #6b7280; margin-top: 3px; }
@@ -1368,27 +1374,27 @@ function toggleMonthDone() { monthDoneOpen = !monthDoneOpen; render(); }
 
 // ---------- chiikawa 角色模块 ----------
 function ckBody(fill) {
-  return '<path d="M60 16 C84 16 98 38 96 62 C94 86 86 108 74 110 C68 111 52 111 46 110 C34 108 26 86 24 62 C22 38 36 16 60 16 Z" fill="' + (fill || "#fff") + '"/>'
-    + '<ellipse cx="52" cy="111" rx="6" ry="4"/><ellipse cx="68" cy="111" rx="6" ry="4"/>'
-    + '<ellipse cx="27" cy="80" rx="5.5" ry="8"/><ellipse cx="93" cy="80" rx="5.5" ry="8"/>';
+  return '<path d="M60 14 C84 14 100 36 100 62 C100 88 82 104 60 104 C38 104 20 88 20 62 C20 36 36 14 60 14 Z" fill="' + (fill || "#fff") + '"/>'
+    + '<ellipse cx="50" cy="103" rx="6" ry="4"/><ellipse cx="70" cy="103" rx="6" ry="4"/>'
+    + '<ellipse cx="22" cy="82" rx="5.5" ry="7.5"/><ellipse cx="98" cy="82" rx="5.5" ry="7.5"/>';
 }
 function ckFace(cx, ey, brow) {
   var s = '';
-  s += '<g class="ck-blink"><ellipse cx="' + (cx - 11) + '" cy="' + ey + '" rx="4" ry="5.4" fill="#4a3a35" stroke="none"/><ellipse cx="' + (cx + 11) + '" cy="' + ey + '" rx="4" ry="5.4" fill="#4a3a35" stroke="none"/><circle cx="' + (cx - 9.5) + '" cy="' + (ey - 1.8) + '" r="1.5" fill="#fff" stroke="none"/><circle cx="' + (cx + 12.5) + '" cy="' + (ey - 1.8) + '" r="1.5" fill="#fff" stroke="none"/></g>';
+  s += '<g class="ck-blink"><circle cx="' + (cx - 13) + '" cy="' + ey + '" r="5.2" fill="#4a3a35" stroke="none"/><circle cx="' + (cx + 13) + '" cy="' + ey + '" r="5.2" fill="#4a3a35" stroke="none"/><path d="M' + (cx - 15.8) + ' ' + (ey - 2.2) + ' a5.2 5.2 0 0 1 5.2 -3.2" stroke="#fff" stroke-width="1.6" fill="none" stroke-linecap="round"/><path d="M' + (cx + 10.2) + ' ' + (ey - 2.2) + ' a5.2 5.2 0 0 1 5.2 -3.2" stroke="#fff" stroke-width="1.6" fill="none" stroke-linecap="round"/></g>';
   if (brow === 'big') {
-    s += '<path d="M' + (cx - 18) + ' ' + (ey - 12) + ' q7 -8 14 -2" fill="none" stroke="#5a4a44" stroke-width="2.4"/><path d="M' + (cx + 4) + ' ' + (ey - 14) + ' q7 -6 14 2" fill="none" stroke="#5a4a44" stroke-width="2.4"/>';
+    s += '<path d="M' + (cx - 19) + ' ' + (ey - 11) + ' q7 -8 14 -2" fill="none" stroke="#5a4a44" stroke-width="2.4"/><path d="M' + (cx + 5) + ' ' + (ey - 13) + ' q7 -6 14 2" fill="none" stroke="#5a4a44" stroke-width="2.4"/>';
   } else if (brow !== 'none') {
-    s += '<path d="M' + (cx - 16) + ' ' + (ey - 11) + ' q5 -3 9 0" fill="none" stroke="#5a4a44" stroke-width="2"/><path d="M' + (cx + 7) + ' ' + (ey - 11) + ' q5 -3 9 0" fill="none" stroke="#5a4a44" stroke-width="2"/>';
+    s += '<path d="M' + (cx - 17) + ' ' + (ey - 11) + ' q4 -3 8 -1" fill="none" stroke="#5a4a44" stroke-width="2"/><path d="M' + (cx + 9) + ' ' + (ey - 12) + ' q4 -2 8 1" fill="none" stroke="#5a4a44" stroke-width="2"/>';
   }
-  s += '<path d="M' + (cx - 5) + ' ' + (ey + 8) + ' q2.5 3.5 5 0 q2.5 3.5 5 0" fill="none" stroke="#5a4a44" stroke-width="2"/>';
-  s += '<g stroke="#f4b9c8" stroke-width="1.1"><ellipse cx="' + (cx - 20) + '" cy="' + (ey + 6) + '" rx="6.5" ry="4" fill="#ffd7de"/><ellipse cx="' + (cx + 20) + '" cy="' + (ey + 6) + '" rx="6.5" ry="4" fill="#ffd7de"/><line x1="' + (cx - 23) + '" y1="' + (ey + 4) + '" x2="' + (cx - 25) + '" y2="' + (ey + 8) + '"/><line x1="' + (cx - 20) + '" y1="' + (ey + 4) + '" x2="' + (cx - 22) + '" y2="' + (ey + 8) + '"/><line x1="' + (cx + 17) + '" y1="' + (ey + 4) + '" x2="' + (cx + 15) + '" y2="' + (ey + 8) + '"/><line x1="' + (cx + 20) + '" y1="' + (ey + 4) + '" x2="' + (cx + 18) + '" y2="' + (ey + 8) + '"/></g>';
+  s += '<path d="M' + (cx - 5) + ' ' + (ey + 9) + ' q2.5 3.5 5 0 q2.5 3.5 5 0" fill="none" stroke="#5a4a44" stroke-width="2"/>';
+  s += '<g stroke="#f4b9c8" stroke-width="1.1"><ellipse cx="' + (cx - 21) + '" cy="' + (ey + 8) + '" rx="8" ry="5.5" fill="#ffd7de"/><ellipse cx="' + (cx + 21) + '" cy="' + (ey + 8) + '" rx="8" ry="5.5" fill="#ffd7de"/><line x1="' + (cx - 25) + '" y1="' + (ey + 5) + '" x2="' + (cx - 28) + '" y2="' + (ey + 11) + '"/><line x1="' + (cx - 21) + '" y1="' + (ey + 5) + '" x2="' + (cx - 24) + '" y2="' + (ey + 11) + '"/><line x1="' + (cx - 17) + '" y1="' + (ey + 5) + '" x2="' + (cx - 20) + '" y2="' + (ey + 11) + '"/><line x1="' + (cx + 17) + '" y1="' + (ey + 5) + '" x2="' + (cx + 14) + '" y2="' + (ey + 11) + '"/><line x1="' + (cx + 21) + '" y1="' + (ey + 5) + '" x2="' + (cx + 18) + '" y2="' + (ey + 11) + '"/><line x1="' + (cx + 25) + '" y1="' + (ey + 5) + '" x2="' + (cx + 22) + '" y2="' + (ey + 11) + '"/></g>';
   return s;
 }
 function ckChiikawa() {
-  return '<svg viewBox="0 0 120 132" class="cksvg"><g class="ck-bob" stroke="#5a4a44" stroke-width="2.6" fill="#fff" stroke-linejoin="round" stroke-linecap="round"><circle class="ck-earL" cx="47" cy="22" r="7.5"/><circle class="ck-earR" cx="73" cy="22" r="7.5"/>' + ckBody() + ckFace(60, 56) + '</g></svg>';
+  return '<svg viewBox="0 0 120 124" class="cksvg"><g class="ck-bob" stroke="#5a4a44" stroke-width="2.6" fill="#fff" stroke-linejoin="round" stroke-linecap="round"><circle class="ck-earL" cx="47" cy="15" r="8.5"/><circle class="ck-earR" cx="73" cy="15" r="8.5"/>' + ckBody() + ckFace(60, 58) + '</g></svg>';
 }
 function ckHachi() {
-  return '<svg viewBox="0 0 120 132" class="cksvg"><g class="ck-bob" stroke="#5a4a44" stroke-width="2.6" fill="#fff" stroke-linejoin="round" stroke-linecap="round"><path class="ck-earL" d="M36 30 L30 6 L56 20 Z" fill="#8fbfe6"/><path class="ck-earR" d="M84 30 L90 6 L64 20 Z" fill="#8fbfe6"/>' + ckBody() + '<path d="M24 58 C24 34 40 18 60 18 C80 18 96 34 96 58 C86 48 74 44 66 48 C62 50 58 50 54 48 C46 44 34 48 24 58 Z" fill="#8fbfe6" stroke="#5a4a44" stroke-width="2.2"/>' + ckFace(60, 62) + '</g></svg>';
+  return '<svg viewBox="0 0 120 124" class="cksvg"><g class="ck-bob" stroke="#5a4a44" stroke-width="2.6" fill="#fff" stroke-linejoin="round" stroke-linecap="round"><path class="ck-earL" d="M40 20 L30 -6 L60 12 Z" fill="#8fbfe6"/><path class="ck-earR" d="M80 20 L90 -6 L60 12 Z" fill="#8fbfe6"/>' + ckBody() + '<path d="M21 52 C21 28 38 14 60 14 C82 14 99 28 99 52 C86 42 74 40 66 44 C62 46 58 46 54 44 C46 40 34 42 21 52 Z" fill="#8fbfe6" stroke="#5a4a44" stroke-width="2.2"/>' + ckFace(60, 62) + '</g></svg>';
 }
 function ckUsagi() {
   return '<svg viewBox="0 -14 120 154" class="cksvg"><g class="ck-bob" stroke="#5a4a44" stroke-width="2.6" fill="#f6ecc8" stroke-linejoin="round" stroke-linecap="round"><g class="ck-earL"><path d="M49 40 C39 8 41 -12 50 -12 C59 -12 57 18 56 42 Z"/><path d="M50 34 C45 14 46 2 50 2 C55 2 54 18 53 36 Z" fill="#ffd7de" stroke="none"/></g><g class="ck-earR"><path d="M71 40 C81 8 79 -12 70 -12 C61 -12 63 18 64 42 Z"/><path d="M70 34 C75 14 74 2 70 2 C65 2 66 18 67 36 Z" fill="#ffd7de" stroke="none"/></g>' + ckBody('#f6ecc8') + ckFace(60, 58, 'big') + '</g></svg>';
@@ -1412,7 +1418,16 @@ function ckChar(key) {
   return ckChiikawa();
 }
 function ckDesk() {
-  return '<svg viewBox="0 0 210 150" class="ckscene"><g stroke="#5a4a44" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"><rect x="18" y="112" width="174" height="12" rx="5" fill="#e6c79a"/><rect x="34" y="124" width="9" height="20" fill="#d3ad78"/><rect x="167" y="124" width="9" height="20" fill="#d3ad78"/><g class="ck-bob" fill="#fff"><circle class="ck-earL" cx="80" cy="46" r="7.5"/><circle class="ck-earR" cx="104" cy="46" r="7.5"/><path d="M92 40 C114 40 126 58 124 80 C122 102 110 114 92 114 C74 114 62 102 60 80 C58 58 70 40 92 40 Z"/>' + ckFace(92, 74) + '</g><g class="ck-paper"><rect x="66" y="100" width="50" height="16" rx="2" fill="#fff"/><line x1="72" y1="106" x2="104" y2="106" stroke="#c9d2df" stroke-width="1.6"/><line x1="72" y1="110" x2="100" y2="110" stroke="#c9d2df" stroke-width="1.6"/></g><g class="ck-pen" fill="none"><path d="M120 96 q14 6 20 10"/><rect x="134" y="100" width="5" height="16" rx="2" transform="rotate(40 136 108)" fill="#f2b134" stroke="#5a4a44" stroke-width="1.4"/></g></g></svg>';
+  return '<svg viewBox="0 0 210 150" class="ckscene"><g stroke="#5a4a44" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"><g class="ck-bob" fill="#fff"><circle class="ck-earL" cx="80" cy="34" r="8"/><circle class="ck-earR" cx="104" cy="34" r="8"/><path d="M92 30 C114 30 126 48 124 70 C122 92 110 104 92 104 C74 104 62 92 60 70 C58 48 70 30 92 30 Z"/>' + ckFace(92, 66) + '</g><rect x="18" y="102" width="174" height="12" rx="5" fill="#e6c79a"/><rect x="34" y="114" width="9" height="20" fill="#d3ad78"/><rect x="167" y="114" width="9" height="20" fill="#d3ad78"/><g class="ck-paper"><rect x="66" y="92" width="50" height="14" rx="2" fill="#fff"/><line x1="72" y1="97" x2="104" y2="97" stroke="#c9d2df" stroke-width="1.6"/><line x1="72" y1="101" x2="100" y2="101" stroke="#c9d2df" stroke-width="1.6"/></g><g class="ck-pen" fill="none"><path d="M120 88 q14 5 20 9"/><rect x="134" y="90" width="5" height="15" rx="2" transform="rotate(42 136 97)" fill="#f2b134" stroke="#5a4a44" stroke-width="1.4"/></g></g></svg>';
+}
+function ckSceneApple() {
+  return '<svg viewBox="0 -14 130 154" class="ckscene"><g class="ck-bob" stroke="#5a4a44" stroke-width="2.6" fill="#f6ecc8" stroke-linejoin="round" stroke-linecap="round"><g class="ck-earL"><path d="M49 26 C39 0 41 -16 50 -16 C58 -16 56 8 55 28 Z"/><path d="M50 20 C45 2 46 -8 50 -8 C54 -8 53 6 53 22 Z" fill="#ffd7de" stroke="none"/></g><g class="ck-earR"><path d="M71 26 C81 0 79 -16 70 -16 C62 -16 64 8 65 28 Z"/><path d="M70 20 C75 2 74 -8 70 -8 C66 -8 67 6 67 22 Z" fill="#ffd7de" stroke="none"/></g>' + ckBody('#f6ecc8') + ckFace(60, 58, 'big') + '<path d="M78 74 q6 4 10 1" fill="none" stroke="#5a4a44" stroke-width="2.4"/><g class="ck-apple"><circle cx="97" cy="80" r="11" fill="#e8604c"/><path d="M97 69 q1 -5 6 -6" fill="none" stroke="#5a4a44" stroke-width="2"/><path d="M97 66 q7 -5 12 -1 q-6 5 -12 1 Z" fill="#7fbf6f"/><path d="M90 76 a4 4 0 0 1 5 -3" stroke="#fff" stroke-width="1.6" fill="none"/></g></g></svg>';
+}
+function ckSceneSleep() {
+  return '<svg viewBox="0 0 140 124" class="ckscene"><g class="ck-bob" stroke="#5a4a44" stroke-width="2.6" fill="#fff" stroke-linejoin="round" stroke-linecap="round"><circle cx="47" cy="15" r="8.5"/><circle cx="73" cy="15" r="8.5"/>' + ckBody() + '<path d="M42 58 q5 5 10 0" fill="none" stroke-width="2.4"/><path d="M68 58 q5 5 10 0" fill="none" stroke-width="2.4"/><path d="M60 70 q3 3 6 0" fill="none" stroke-width="2"/><g stroke="#f4b9c8" stroke-width="1.1"><ellipse cx="39" cy="66" rx="8" ry="5.5" fill="#ffd7de"/><ellipse cx="81" cy="66" rx="8" ry="5.5" fill="#ffd7de"/></g><g class="ck-zzz"><text x="104" y="34" font-size="18" font-weight="bold" fill="#8fbfe6" stroke="none">Z</text><text x="116" y="22" font-size="13" font-weight="bold" fill="#a5cbe8" stroke="none">z</text></g></g></svg>';
+}
+function ckSceneBall() {
+  return '<svg viewBox="0 0 140 124" class="ckscene"><g class="ck-bob" stroke="#5a4a44" stroke-width="2.6" fill="#fff" stroke-linejoin="round" stroke-linecap="round"><circle cx="47" cy="15" r="8.5"/><circle cx="73" cy="15" r="8.5"/>' + ckBody() + ckFace(60, 58) + '<path d="M96 70 q6 -2 9 2" fill="none" stroke="#5a4a44" stroke-width="2.4"/></g><g class="ck-ball"><circle cx="112" cy="86" r="11" fill="#f6a5c0"/><path d="M104 82 q8 4 16 0 M104 90 q8 -4 16 0" fill="none" stroke="#fff" stroke-width="1.8"/></g></svg>';
 }
 
 var CK_TIERS = [
@@ -1467,10 +1482,18 @@ function renderStars() {
     }
   }
   var tier = ckTier(total);
+  var scenes = [
+    { fn: ckDesk, lines: ["今天也要一起加油呀～", "写呀写呀…我在认真记录", "有进展就值得表扬！"] },
+    { fn: ckSceneApple, lines: ["啊呜啊呜…苹果最香啦！", "吃完这块继续冲！", "呀哈！补充完能量！"] },
+    { fn: ckSceneSleep, lines: ["累了就歇一下下", "休息是为了走更远～", "呼…做个好梦"] },
+    { fn: ckSceneBall, lines: ["接住啦！嘿嘿", "动起来才有精神", "再来一个！"] }
+  ];
+  var sIdx = Math.floor(Date.now() / 15000) % scenes.length;
+  var scene = scenes[sIdx];
   var line = ckBubble;
   if (!line) {
     var mins = Math.floor(Date.now() / 60000);
-    line = CK_IDLE[mins % CK_IDLE.length];
+    line = scene.lines[mins % scene.lines.length];
   }
   var friend = "";
   if (tier.cur.comp) {
@@ -1479,7 +1502,7 @@ function renderStars() {
   var html = '<div class="ckstage">'
     + '<div class="ckbubble">' + esc(line) + '</div>'
     + '<div class="ckcast">'
-    +   '<div class="ckmain">' + ckDesk() + '</div>'
+    +   '<div class="ckmain">' + scene.fn() + '</div>'
     +   friend
     + '</div>'
     + '<div class="ckstats">'
