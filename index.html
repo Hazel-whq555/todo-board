@@ -2068,6 +2068,26 @@ function openEditor(kind) {
   var base = todayStr();
   var key = (kind === "weekly") ? weeklyKey(base) : monthlyKey(base);
   var outline = getReport(state, key, base, kind);
+  // staleness check: newer completions/plans since the draft was created
+  var fresh = (kind === "weekly") ? draftWeeklyOutline(state, base) : draftMonthlyOutline(state, base);
+  var savedDone = (outline.sections[0] && outline.sections[0].points) ? outline.sections[0].points.length : 0;
+  var savedPlan = (outline.sections[2] && outline.sections[2].points) ? outline.sections[2].points.length : 0;
+  var freshDone = fresh.sections[0].points.length;
+  var freshPlan = fresh.sections[2].points.length;
+  var skipDone = (typeof outline._skipDone === "number") ? outline._skipDone : savedDone;
+  var skipPlan = (typeof outline._skipPlan === "number") ? outline._skipPlan : savedPlan;
+  if (freshDone > skipDone || freshPlan > skipPlan) {
+    var diffTxt = [];
+    if (freshDone > skipDone) { diffTxt.push("新增 " + (freshDone - savedDone) + " 项已完成工作"); }
+    if (freshPlan > skipPlan) { diffTxt.push("新增 " + (freshPlan - savedPlan) + " 项下期计划"); }
+    if (confirm("检测到" + diffTxt.join("、") + "。\n\n点【确定】用最新数据刷新草稿（会覆盖你之前的手动编辑）；\n点【取消】保留当前草稿继续编辑。")) {
+      outline = fresh;
+      state.reports[key] = fresh;
+    } else {
+      outline._skipDone = freshDone;
+      outline._skipPlan = freshPlan;
+    }
+  }
   if (kind === "weekly") { state.meta.lastWeekly = mondayOf(base); }
   else { state.meta.lastMonthly = base.slice(0, 7); }
   saveState();
