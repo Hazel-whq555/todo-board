@@ -958,6 +958,7 @@ function persistLocal() {
 function saveState() {
   if (!state.meta) { state.meta = {}; }
   state.meta.updatedTs = Date.now();
+  dirty = true;
   persistLocal();
   if (syncReady()) { schedulePush(); }
 }
@@ -971,6 +972,8 @@ var cryptoKey = null;  // in-memory AES key
 var pushTimer = null;
 var pushing = false;
 var pushFailed = false;
+var dirty = false;         // local has unsaved edits
+var lastPulledTs = 0;      // cloud updatedTs as of our last pull
 var lastSha = null;
 
 function trimStr(s) { return String(s || "").replace(/^\s+|\s+$/g, ""); }
@@ -1059,10 +1062,58 @@ function schedulePush() {
   pushTimer = setTimeout(cloudPush, 800);
 }
 
+// Merge a newer cloud state into the local one (per-item newer-wins).
+function mergeStates(local, cloud) {
+  var byId = {};
+  var i, it;
+  for (i = 0; i < cloud.items.length; i++) { byId[cloud.items[i].id] = cloud.items[i]; }
+  var out = [];
+  var seen = {};
+  for (i = 0; i < local.items.length; i++) {
+    it = local.items[i];
+    var c = byId[it.id];
+    if (c && (c.updatedAt || 0) > (it.updatedAt || 0)) { out.push(c); } else { out.push(it); }
+    seen[it.id] = 1;
+  }
+  for (i = 0; i < cloud.items.length; i++) {
+    if (!seen[cloud.items[i].id]) { out.push(cloud.items[i]); }
+  }
+  var merged = { version: 1, items: out, meta: local.meta || {}, reports: local.reports || {} };
+  var cr = cloud.reports || {};
+  for (var k in cr) { if (merged.reports[k] === undefined) { merged.reports[k] = cr[k]; } }
+  return normalizeState(merged);
+}
+
 function cloudPush() {
   if (!syncReady() || pushing) { return; }
   pushing = true;
-  encryptState(cryptoKey).then(function (payload) {
+  // before overwriting the cloud, merge in any newer cloud changes
+  var pre = Promise.resolve(null);
+  if (dirty) {
+    pre = fetch(GH_API + "/repos/" + syncCfg.repo + "/contents/data.json", { headers: ghHeaders(false), cache: "no-store" }).then(function (r) {
+      if (!r.ok) { return null; }
+      return r.json().then(function (meta) {
+        if (!meta) { return null; }
+        lastSha = meta.sha;
+        var payload = JSON.parse(atob(String(meta.content).replace(/[^A-Za-z0-9+/=]/g, "")));
+        if (!payload || payload.v !== 2) { return null; }
+        return decryptPayload(cryptoKey, payload).then(function (cloud) {
+          if (!validState(cloud)) { return null; }
+          cloud = normalizeState(cloud);
+          var cloudTs = (cloud.meta && cloud.meta.updatedTs) || 0;
+          if (cloudTs > lastPulledTs && cloudTs > 0) {
+            state = mergeStates(state, cloud);
+            persistLocal();
+            render();
+          }
+          return true;
+        });
+      }).catch(function () { return null; });
+    }).catch(function () { return null; });
+  }
+  pre.then(function () {
+    return encryptState(cryptoKey);
+  }).then(function (payload) {
     var doPut = function (sha) {
       var body = { message: "sync", content: btoa(JSON.stringify(payload)) };
       if (sha) { body.sha = sha; }
@@ -1087,6 +1138,7 @@ function cloudPush() {
       pushing = false;
       if (r.ok) {
         pushFailed = false;
+        dirty = false;
         return r.json().then(function (resp) {
           if (resp && resp.content) { lastSha = resp.content.sha; }
         }).catch(function () {});
@@ -1122,13 +1174,23 @@ function cloudPull() {
       var cloudTs = (cloud.meta && cloud.meta.updatedTs) || 0;
       if (cloudTs >= localTs) {
         state = cloud;
+        lastPulledTs = cloudTs;
         persistLocal();
+        dirty = false;
         return true;
       }
-      schedulePush();
+      if (dirty) { schedulePush(); }
       return false;
     });
   });
+}
+
+// quiet background sync: no toasts, just refresh the view if changed
+function cloudSyncQuiet() {
+  if (!syncReady()) { return; }
+  cloudPull().then(function (changed) {
+    if (changed) { render(); }
+  }).catch(function () {});
 }
 
 function showCloudSync() {
@@ -1277,6 +1339,12 @@ function initApp() {
     }).then(function (changed) {
       if (changed) { render(); }
     }).catch(function () {});
+    // auto-sync: when the tab/app comes back to the foreground
+    document.addEventListener("visibilitychange", function () {
+      if (document.visibilityState === "visible") { cloudSyncQuiet(); }
+    });
+    // auto-sync: every 60 seconds while the page is open
+    setInterval(cloudSyncQuiet, 60000);
   }
 }
 
