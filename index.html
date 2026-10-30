@@ -660,9 +660,30 @@ function updateItem(state, id, patch) {
 
 function deleteItem(state, id) {
   for (var i = 0; i < state.items.length; i++) {
-    if (state.items[i].id === id) { state.items.splice(i, 1); return true; }
+    if (state.items[i].id === id) {
+      state.items.splice(i, 1);
+      // tombstone so a delete survives multi-device merge
+      if (!state.meta) { state.meta = {}; }
+      if (!state.meta.deleted) { state.meta.deleted = {}; }
+      state.meta.deleted[id] = new Date().getTime();
+      return true;
+    }
   }
   return false;
+}
+
+// Drop items whose tombstone is newer than the item's last update
+// (a delete wins over an older edit; an edit after the delete resurrects).
+function applyTombstones(state) {
+  var del = (state.meta && state.meta.deleted) || {};
+  var out = [];
+  for (var i = 0; i < state.items.length; i++) {
+    var it = state.items[i];
+    var d = del[it.id];
+    if (d && (it.updatedAt || 0) <= d) { continue; }
+    out.push(it);
+  }
+  state.items = out;
 }
 
 // ---------- queries ----------
@@ -1063,22 +1084,39 @@ function schedulePush() {
 }
 
 // Merge a newer cloud state into the local one (per-item newer-wins).
+// Tombstones (meta.deleted) from both sides are unioned; items hit by a
+// tombstone newer than their last edit are removed so deletes win.
 function mergeStates(local, cloud) {
   var byId = {};
   var i, it;
   for (i = 0; i < cloud.items.length; i++) { byId[cloud.items[i].id] = cloud.items[i]; }
+  var ld = (local.meta && local.meta.deleted) || {};
+  var cd = (cloud.meta && cloud.meta.deleted) || {};
+  var del = {};
+  for (var k1 in ld) { del[k1] = Math.max(ld[k1], cd[k1] || 0); }
+  for (var k2 in cd) { del[k2] = Math.max(cd[k2] || 0, ld[k2] || 0); }
   var out = [];
   var seen = {};
   for (i = 0; i < local.items.length; i++) {
     it = local.items[i];
     var c = byId[it.id];
-    if (c && (c.updatedAt || 0) > (it.updatedAt || 0)) { out.push(c); } else { out.push(it); }
+    if (c && (c.updatedAt || 0) > (it.updatedAt || 0)) { it = c; }
+    var d = del[it.id];
+    if (d && (it.updatedAt || 0) <= d) { seen[it.id] = 1; continue; }
+    out.push(it);
     seen[it.id] = 1;
   }
   for (i = 0; i < cloud.items.length; i++) {
-    if (!seen[cloud.items[i].id]) { out.push(cloud.items[i]); }
+    var c2 = cloud.items[i];
+    if (!seen[c2.id]) {
+      var d2 = del[c2.id];
+      if (d2 && (c2.updatedAt || 0) <= d2) { continue; }
+      out.push(c2);
+    }
   }
-  var merged = { version: 1, items: out, meta: local.meta || {}, reports: local.reports || {} };
+  var meta = local.meta || {};
+  meta.deleted = del;
+  var merged = { version: 1, items: out, meta: meta, reports: local.reports || {} };
   var cr = cloud.reports || {};
   for (var k in cr) { if (merged.reports[k] === undefined) { merged.reports[k] = cr[k]; } }
   return normalizeState(merged);
@@ -1170,9 +1208,22 @@ function cloudPull() {
     return decryptPayload(cryptoKey, payload).then(function (cloud) {
       if (!validState(cloud)) { return false; }
       cloud = normalizeState(cloud);
+      applyTombstones(cloud);
       var localTs = (state.meta && state.meta.updatedTs) || 0;
       var cloudTs = (cloud.meta && cloud.meta.updatedTs) || 0;
       if (cloudTs >= localTs) {
+        // keep local tombstones the cloud copy may not have yet
+        var ld = (state.meta && state.meta.deleted) || {};
+        var cd = (cloud.meta && cloud.meta.deleted) || {};
+        var dropped = false;
+        for (var k in ld) {
+          if (!cd[k] || cd[k] < ld[k]) { cd[k] = ld[k]; dropped = true; }
+        }
+        if (dropped) {
+          cloud.meta.deleted = cd;
+          applyTombstones(cloud);
+          schedulePush();
+        }
         state = cloud;
         lastPulledTs = cloudTs;
         persistLocal();
